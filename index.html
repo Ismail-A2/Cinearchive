@@ -210,7 +210,7 @@ $("chips").addEventListener("click",function(e){var f=e.target.getAttribute("dat
 $("q").addEventListener("input",render);
 function toast(m){var t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2200)}
 $("grid").addEventListener("click",function(e){
-  var c=e.target.closest(".card");if(!c)return;var sid=c.getAttribute("data-sid");if(sid){openStream(sid);return}var id=c.getAttribute("data-id");
+  var c=e.target.closest(".card");if(!c)return;var sid=c.getAttribute("data-sid");if(sid){if(night){var j=sel.indexOf(sid);if(j>=0)sel.splice(j,1);else if(sel.length>=10){toast("Ten films is the maximum.");return}else sel.push(sid);render()}else openStream(sid);return}var id=c.getAttribute("data-id");
   if(night||del){var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else if(night&&sel.length>=10){toast("Ten films is the maximum.");return}else sel.push(id);render()}
   else openDetail(id)});
 $("nightBtn").addEventListener("click",function(){night=!night;del=false;sel=[];render()});
@@ -264,10 +264,12 @@ function renderStream(){
   var q=$("q").value.trim().toLowerCase();
   var list=stream.items.filter(function(m){return(!q||(m.title+" "+(m.genre||"")).toLowerCase().indexOf(q)>=0)&&(filter==="All"||m.svc.indexOf(filter)>=0)});
   $("count").textContent=stream.at?stream.items.length+" films on UK streaming \u00b7 updated "+new Date(stream.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+(stream.miss&&stream.miss.length?" \u00b7 not found: "+stream.miss.join(", "):""):"Streaming shelf not loaded yet";
-  $("grid").innerHTML=list.map(function(m){return'<button class="card" data-sid="'+m.id+'" aria-label="'+esc(m.title)+'">'+poster(m,'<span class="badge">'+esc(m.svc[0])+(m.svc.length>1?" +"+(m.svc.length-1):"")+'</span>'+(owned(m)?'<span class="seen">Owned</span>':""))+'</button>'}).join("");
+  $("grid").innerHTML=list.map(function(m){var i=sel.indexOf(m.id);return'<button class="card'+(i>=0?" sel":"")+'" data-sid="'+m.id+'" aria-label="'+esc(m.title)+'">'+poster(m,'<span class="badge">'+esc(m.svc[0])+(m.svc.length>1?" +"+(m.svc.length-1):"")+'</span>'+(owned(m)?'<span class="seen">Owned</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
   $("empty").hidden=list.length>0;
   $("empty").textContent=stream.items.length?"No films match.":"Add your TMDB key in Settings, then tap Refresh streaming.";
-  $("tray").hidden=true}
+  $("tray").hidden=!night;$("trayN").textContent=sel.length;$("trayOf").textContent=" of 10 chosen";$("traySub").textContent="Pick 2 to 10 films, then start the draw.";
+  $("startDraw").hidden=false;$("selAll").hidden=true;$("delGo").hidden=true;$("startDraw").disabled=sel.length<2;
+  $("nightBtn").classList.toggle("on",night);$("nightBtn").setAttribute("aria-pressed",night);$("nightBtn").textContent=night?"Cancel Movie Night":"Movie Night"}
 function openStream(id){
   var m=stream.items.filter(function(x){return x.id===id})[0];if(!m)return;
   $("detailBody").innerHTML=(m.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(m.backdrop)+')"></div>':"")+'<div class="row">'+poster(m)+'<div><h2>'+esc(m.title)+'</h2><p class="meta">'+esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+'</p><p class="meta">Included with: '+esc(m.svc.join(", "))+'</p>'+(m.overview?'<p class="ov">'+esc(m.overview)+'</p>':"")+'</div></div><div class="foot"><button class="btn" data-close>Close</button>'+(owned(m)?"":'<button class="btn primary" id="sAdd">Add to my collection</button>')+'</div>';
@@ -295,9 +297,9 @@ async function refreshStream(quiet){
 $("refBtn").onclick=function(){refreshStream(false)};
 $("tabs").onclick=function(e){
   var t=e.target.getAttribute("data-t");if(!t||t===tab)return;
-  tab=t;night=false;del=false;sel=[];filter="All";
+  tab=t;del=false;filter="All";if(!night)sel=[];
   [].forEach.call($("tabs").children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-t")===t)});
-  $("nightBtn").hidden=$("addBtn").hidden=$("delBtn").hidden=t==="str";$("refBtn").hidden=t!=="str";
+  $("addBtn").hidden=$("delBtn").hidden=t==="str";$("refBtn").hidden=t!=="str";
   $("empty").textContent="No films match. Try another search or add a film.";
   buildChips();render()};
 /* add */
@@ -325,7 +327,7 @@ $("mute").onclick=function(){snd=!snd;this.textContent=snd?"Sound on":"Sound off
 async function runDraw(ids){
   var my=++token;fast=false;
   var dr=$("draw"),say=$("say");
-  var list=ids.map(function(id){return films.filter(function(f){return f.id===id})[0]}).filter(Boolean);
+  var list=ids.map(function(id){return films.concat(stream.items).filter(function(f){return f.id===id})[0]}).filter(Boolean);
   var st=$("stage");st.className="stage";dr.classList.remove("tense");
   st.style.setProperty("--w",(list.length<=3?150:list.length<=6?118:92)+"px");
   st.innerHTML=list.map(function(f){return'<div class="c" data-id="'+f.id+'">'+poster(f)+'</div>'}).join("");
@@ -376,7 +378,10 @@ async function runDraw(ids){
   $("dact").innerHTML='<button class="btn" id="again">Draw again</button><button class="btn" id="drop">Remove winner and redraw</button><button class="btn primary" id="seenIt">Mark as watched</button><button class="btn" id="closeDraw">Close</button>';
   $("again").onclick=function(){runDraw(ids)};
   $("drop").onclick=function(){var rest=ids.filter(function(x){return x!==w.id});if(rest.length<2){toast("Not enough films left to redraw.");return}runDraw(rest);ids=rest};
-  $("seenIt").onclick=function(){w.watched=true;save();toast(w.title+" marked as watched.");render()};
+  if(w.svc){say.textContent+=" \u2014 on "+w.svc.join(", ");$("seenIt").textContent="Add to my collection"}
+  $("seenIt").onclick=function(){
+    if(w.svc){if(owned(w)){toast("Already in your collection.");return}films.push({id:"f"+Date.now(),title:w.title,year:w.year,genre:w.genre,format:"Digital",watched:false,tmdbId:w.tmdbId,poster:w.poster,backdrop:w.backdrop,overview:w.overview});save();toast("Added to your collection.");render();return}
+    w.watched=true;save();toast(w.title+" marked as watched.");render()};
   $("closeDraw").onclick=function(){token++;$("draw").hidden=true;render()};
 }
 $("startDraw").addEventListener("click",function(){if(sel.length>=2)runDraw(sel.slice())});
