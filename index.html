@@ -94,6 +94,29 @@ label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
 .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .poster.img{padding:0}.poster.img::before,.poster.img .pt,.poster.img .py{display:none}
 .btn.danger{background:#8c1d2b;border-color:#c24a5a;color:#fff}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.55))}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.11;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.hero2{position:relative;width:calc(100% - 48px);max-width:1152px;height:clamp(270px,46vw,430px);margin:10px auto 6px;border-radius:14px;overflow:hidden;box-shadow:0 24px 60px -24px #000,inset 0 0 0 1px var(--line);background:var(--panel)}
+.hero2[hidden]{display:none}
+.hero2 .bgi{position:absolute;inset:-5%;background-size:cover;background-position:center 25%;animation:kb 30s ease-in-out infinite alternate}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.09) translate(-1.5%,-1%)}}
+.hero2::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(20,9,12,.93) 0,rgba(20,9,12,.55) 45%,transparent 85%),linear-gradient(0deg,rgba(20,9,12,.9),transparent 45%)}
+.hero2 .txt{position:absolute;z-index:2;left:clamp(18px,4vw,42px);bottom:clamp(18px,4vw,38px);max-width:min(540px,82%)}
+.hero2 .eyebrow{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--brass)}
+.hero2 h2{font:700 clamp(32px,7vw,60px)/.98 var(--serif);margin:8px 0 4px;text-wrap:balance}
+.hero2 p{margin:8px 0 16px;color:rgba(242,232,213,.85);font-size:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hero2 .meta{margin:0}
+.rail{margin:22px 0 4px}
+.sec,.rail h3{font:600 28px/1.1 var(--serif);margin:0 0 14px;letter-spacing:.01em}
+.sec{margin-top:26px}.sec:empty{display:none}
+.rail .row2{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x proximity;padding:6px 4px 20px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rail .row2::-webkit-scrollbar{display:none}
+.rail .card{flex:0 0 150px;scroll-snap-align:start}
+.sheet{animation:fadeIn .25s ease}
+.panel{animation:riseIn .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes riseIn{from{opacity:0;transform:translateY(24px) scale(.97)}}
+.row h2{font-size:42px;line-height:1}
 .tray .actions{flex-wrap:wrap;justify-content:flex-end}
 .tabs{display:flex;gap:4px;max-width:1200px;margin:0 auto;padding:6px 24px 0}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);padding:8px 14px;font:600 21px var(--serif)}
@@ -101,10 +124,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
-.hero{height:150px;margin:-24px -24px 16px;border-radius:14px 14px 0 0;background-size:cover;background-position:center 20%;position:relative}
+.hero{height:240px;margin:-24px -24px 16px;border-radius:14px 14px 0 0;background-size:cover;background-position:center 20%;position:relative}
 .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,var(--panel))}
 .ov{font-size:14px;color:var(--dim);margin:8px 0 0;max-height:7.5em;overflow:auto}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}.hero2 .bgi,.sheet,.panel{animation:none!important}}
 @media(max-width:600px){.row{flex-direction:column}.draw::before,.draw::after{width:5vw}.stage{max-width:84vw}}
 </style>
 </head>
@@ -120,11 +143,12 @@ label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
   </div>
 </header>
 <div class="tabs" id="tabs"><button data-t="lib" aria-pressed="true">My collection</button><button data-t="str" aria-pressed="false">On streaming</button></div>
+<section class="hero2" id="hero2" hidden></section>
 <div class="bar">
   <input id="q" type="search" placeholder="Search your collection" aria-label="Search your collection">
   <span id="chips"></span>
 </div>
-<main><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>No films match. Try another search or add a film.</div></main>
+<main><div id="rails"></div><h3 class="sec" id="gridTitle"></h3><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>No films match. Try another search or add a film.</div></main>
 
 <div class="tray" id="tray" hidden>
   <div><strong id="trayN">0</strong><span id="trayOf"> of 10 chosen</span><div class="sub" id="traySub">Pick 2 to 10 films, then start the draw.</div></div>
@@ -146,6 +170,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
   <h2>Settings</h2>
   <label for="kKey">TMDB API key</label><input id="kKey" autocomplete="off" spellcheck="false">
   <p class="meta" style="font-size:13px">Stored only on this device. Get a free key at themoviedb.org under Settings, then API.</p>
+  <label>Backup</label>
+  <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="expBtn">Export backup</button><button class="btn" id="impBtn">Import backup</button></div>
+  <input type="file" id="impFile" accept=".json,application/json" hidden>
+  <p class="meta" style="font-size:13px" id="bstat">Saves your collection to a file. Your TMDB key is not included.</p>
   <div class="foot"><button class="btn" id="match">Match posters for my films</button><button class="btn" data-close>Close</button><button class="btn primary" id="saveKey">Save key</button></div>
   <p class="meta" id="mstat" style="font-size:13px"></p>
   <p class="meta" style="font-size:12px">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
@@ -177,7 +205,7 @@ function poster(f,extra){var im=f.poster?'<img src="'+IMG+'w342'+esc(f.poster)+'
 var filter="All",night=false,sel=[],tab="lib",del=false;
 var FILTERS=["All","Physical","Digital","Unwatched"];
 function render(){
-  if(tab==="str"){renderStream();return}
+  extras();if(tab==="str"){renderStream();return}
   var q=$("q").value.trim().toLowerCase();
   var list=films.filter(function(f){
     if(q&&(f.title+" "+(f.genre||"")+" "+(f.year||"")).toLowerCase().indexOf(q)<0)return false;
@@ -210,10 +238,11 @@ buildChips();
 $("chips").addEventListener("click",function(e){var f=e.target.getAttribute("data-f");if(!f)return;filter=f;[].forEach.call($("chips").children,function(c){c.setAttribute("aria-pressed",c.getAttribute("data-f")===f)});render()});
 $("q").addEventListener("input",render);
 function toast(m){var t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2200)}
-$("grid").addEventListener("click",function(e){
+var gridClick=function(e){
   var c=e.target.closest(".card");if(!c)return;var sid=c.getAttribute("data-sid");if(sid){if(night){var j=sel.indexOf(sid);if(j>=0)sel.splice(j,1);else if(sel.length>=10){toast("Ten films is the maximum.");return}else sel.push(sid);render()}else openStream(sid);return}var id=c.getAttribute("data-id");
   if(night||del){var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else if(night&&sel.length>=10){toast("Ten films is the maximum.");return}else sel.push(id);render()}
-  else openDetail(id)});
+  else openDetail(id)};
+$("grid").addEventListener("click",gridClick);$("rails").addEventListener("click",gridClick);
 $("nightBtn").addEventListener("click",function(){night=!night;del=false;sel=[];render()});
 $("delBtn").addEventListener("click",function(){del=!del;night=false;sel=[];render()});
 $("selAll").addEventListener("click",function(){var ids=[].map.call($("grid").querySelectorAll(".card"),function(c){return c.getAttribute("data-id")});sel=sel.length===ids.length?[]:ids;render()});
@@ -246,7 +275,7 @@ $("srch").onclick=async function(){
       $("fTitle").value=m.title;$("fYear").value=(m.release_date||"").slice(0,4);
       if(!$("fGenre").value&&m.genre_ids&&m.genre_ids.length)$("fGenre").value=GEN[m.genre_ids[0]]||""}
   }catch(e){toast(e.message)}};
-$("setBtn").onclick=function(){$("kKey").value=tkey;$("mstat").textContent="";$("setSheet").hidden=false};
+$("setBtn").onclick=function(){$("kKey").value=tkey;$("mstat").textContent="";$("bstat").textContent="Saves your collection to a file. Your TMDB key is not included.";$("setSheet").hidden=false};
 $("saveKey").onclick=function(){tkey=$("kKey").value.trim();try{localStorage.setItem("cinearchive:tmdb",tkey)}catch(e){}$("setSheet").hidden=true;toast("Key saved.")};
 $("match").onclick=async function(){
   if(!tkey){toast("Save your TMDB key first.");return}
@@ -304,6 +333,47 @@ $("tabs").onclick=function(e){
   $("addBtn").hidden=$("delBtn").hidden=t==="str";$("refBtn").hidden=t!=="str";
   $("empty").textContent="No films match. Try another search or add a film.";
   buildChips();render()};
+/* backup */
+$("expBtn").onclick=async function(){
+  var data=JSON.stringify({app:"your-cinearchive",version:1,exported:new Date().toISOString(),films:films},null,1);
+  var name="cinearchive-backup-"+new Date().toISOString().slice(0,10)+".json";
+  try{var file=new File([data],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Your CineArchive backup"});$("bstat").textContent="Backup shared.";return}
+  }catch(e){if(e&&e.name==="AbortError")return}
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();
+  $("bstat").textContent="Backup downloaded."};
+$("impBtn").onclick=function(){$("impFile").click()};
+$("impFile").onchange=function(){
+  var f=this.files[0];if(!f)return;var inp=this,r=new FileReader();
+  r.onload=function(){
+    try{var d=JSON.parse(r.result),arr=Array.isArray(d)?d:d.films;if(!Array.isArray(arr))throw 0;var add=0;
+      arr.forEach(function(x){if(!x||!x.title)return;
+        var dupe=films.some(function(o){return o.id===x.id||(x.tmdbId&&o.tmdbId===x.tmdbId)||(o.title.toLowerCase()===String(x.title).toLowerCase()&&String(o.year)===String(x.year))});
+        if(dupe)return;
+        films.push({id:x.id||"f"+Date.now()+"-"+add,title:String(x.title),year:x.year||"",genre:x.genre||"",format:x.format||"Digital",watched:!!x.watched,tmdbId:x.tmdbId,poster:x.poster,backdrop:x.backdrop,overview:x.overview});add++});
+      save();render();$("bstat").textContent="Imported "+add+" new film"+(add===1?"":"s")+". "+(arr.length-add)+" already in your collection or skipped."
+    }catch(e){$("bstat").textContent="That file isn\u2019t a CineArchive backup."}
+    inp.value=""};
+  r.readAsText(f)};
+/* cinematic extras */
+function extras(){
+  var q=$("q").value.trim(),def=!q&&filter==="All"&&!night&&!del,hero=$("hero2");
+  $("gridTitle").textContent=tab==="str"?"Popular on UK streaming":(def?"All films":(q||filter!=="All"?"Results":"All films"));
+  var pool=(tab==="str"?stream.items:films).filter(function(m){return m.backdrop});
+  if(!def||!pool.length){hero.hidden=true;hero.innerHTML="";hero.removeAttribute("data-k")}
+  else{
+    var m=pool[Math.floor(Date.now()/864e5)%pool.length],k=tab+m.id;
+    if(hero.getAttribute("data-k")!==k){
+      hero.setAttribute("data-k",k);
+      var meta=esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+(tab==="str"?" \u00b7 "+esc(m.svc.join(", ")):" \u00b7 "+esc(m.format));
+      hero.innerHTML='<div class="bgi" style="background-image:url('+IMG+'w1280'+esc(m.backdrop)+')"></div><div class="txt"><div class="eyebrow">'+(tab==="str"?"Streaming in the UK":"From your archive")+'</div><h2>'+esc(m.title)+'</h2><div class="meta">'+meta+'</div>'+(m.overview?'<p>'+esc(m.overview)+'</p>':"")+'<button class="btn primary hbtn" data-id="'+m.id+'" data-s="'+(tab==="str"?"1":"")+'">View film</button></div>'}
+    hero.hidden=false}
+  var rails=$("rails");
+  if(tab==="lib"&&def&&films.length>=8){
+    var rail=function(t,list){return list.length?'<div class="rail"><h3>'+t+'</h3><div class="row2">'+list.map(function(f){return'<button class="card" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,'<span class="badge">'+esc(f.format)+'</span>'+(f.watched?'<span class="seen">Seen</span>':""))+'</button>'}).join("")+'</div></div>':""};
+    rails.innerHTML=rail("Recently added",films.slice(-12).reverse())+rail("Not yet watched",films.filter(function(f){return !f.watched}).slice(0,12))}
+  else rails.innerHTML=""}
+$("hero2").addEventListener("click",function(e){var b=e.target.closest(".hbtn");if(!b)return;var id=b.getAttribute("data-id");if(b.getAttribute("data-s"))openStream(id);else openDetail(id)});
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;$("res").innerHTML="";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
