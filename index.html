@@ -185,6 +185,7 @@ details.how a{color:var(--brass)}
   </div>
 </header>
 <div class="tabs" id="tabs"><button data-t="lib" aria-pressed="true">My collection</button><button data-t="tv" aria-pressed="false">TV shows</button><button data-t="str" aria-pressed="false">On streaming</button><button data-t="his" aria-pressed="false">History</button></div>
+<div class="banner" id="ib" hidden><span id="ibText">Install Your CineArchive on this device for the full-screen app experience.</span><span style="display:flex;gap:8px;flex:none"><button class="btn primary" id="ibBtn">Install</button><button class="btn" id="ibX">Not now</button></span></div>
 <div class="banner" id="kb" hidden><span>Add your free TMDB key to get posters and streaming info.</span><button class="btn primary" id="kbBtn">Set up</button></div>
 <section class="hero2" id="hero2" hidden></section>
 <div class="bar" id="bar">
@@ -225,6 +226,9 @@ details.how a{color:var(--brass)}
     <li>Come back here, paste it into the box above, and tap <b>Save key</b>.</li>
     <li>Tap <b>Match posters for my films</b> to add artwork to anything you have already added.</li>
   </ol></details>
+  <label>Install</label>
+  <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="instBtn">Install app</button><button class="btn" id="shareBtn">Share app link</button></div>
+  <p class="meta" id="instStat" style="font-size:13px"></p>
   <label>Backup</label>
   <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="expBtn">Export backup</button><button class="btn" id="impBtn">Import backup</button></div>
   <input type="file" id="impFile" accept=".json,application/json" hidden>
@@ -232,6 +236,11 @@ details.how a{color:var(--brass)}
   <div class="foot"><button class="btn" id="match">Match posters for my films</button><button class="btn" data-close>Close</button><button class="btn primary" id="saveKey">Save key</button></div>
   <p class="meta" id="mstat" style="font-size:13px"></p>
   <p class="meta" style="font-size:12px">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+</div></div>
+
+<div class="sheet" id="instSheet" hidden><div class="panel" role="dialog" aria-label="Install">
+  <h2>Install Your CineArchive</h2><div id="instBody"></div>
+  <div class="foot"><button class="btn primary" data-close>Done</button></div>
 </div></div>
 
 <div class="sheet" id="editSheet" hidden><div class="panel" role="dialog" aria-label="Edit film">
@@ -612,13 +621,41 @@ function queueCerts(list){
   certBusy=true;var i=0,done=0;
   var worker=async function(){while(i<todo.length){var f=todo[i++];try{await getDetails(f)}catch(e){f.dfail=Date.now()}done++;if(done%8===0||done===todo.length)$("count").textContent="Looking up age ratings "+done+" of "+todo.length+"\u2026"}};
   Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]).then(function(){save();saveStream();certBusy=false;render()}).catch(function(){certBusy=false})}
+/* install helper */
+var deferredInstall=null;
+var isStandalone=function(){return(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true};
+var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function ibDismissed(){try{return !!localStorage.getItem("cinearchive:ibx")}catch(e){return false}}
+function showInstallBanner(){$("ib").hidden=!(!isStandalone()&&!ibDismissed()&&(deferredInstall||isIOS));
+  $("instBtn").hidden=isStandalone();
+  $("instStat").textContent=isStandalone()?"Installed. You are using the app version.":(isIOS?"On iPhone and iPad, install from Safari using Share, then Add to Home Screen.":"")}
+function openInstallHelp(){
+  var ch=/CriOS/.test(navigator.userAgent),android=/Android/i.test(navigator.userAgent),h="";
+  if(isIOS){h='<ol><li>Open this page in <b>Safari</b>'+(ch?' (or stay in Chrome and use its Share menu)':'')+'.</li><li>Tap the <b>Share</b> button, the square with an arrow pointing up.</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. Your CineArchive now has its own icon.</li></ol><p class="meta">Install it first, then add your TMDB key and your films. An installed app keeps its own separate storage from Safari, so anything you added in a browser tab will not appear in the installed app. Use Export backup and Import backup in Settings to move a collection across.</p>'}
+  else if(android){h='<ol><li>Open this page in <b>Chrome</b>.</li><li>Tap the <b>three-dot menu</b>.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm. The app appears with the rest of your apps.</li></ol>'}
+  else{h='<ol><li>In <b>Chrome</b> or <b>Edge</b>, look for the install icon at the right of the address bar, or open the browser menu.</li><li>Choose <b>Install Your CineArchive</b>.</li></ol><p class="meta">Safari on a Mac: use File, then Add to Dock.</p>'}
+  $("instBody").innerHTML=h;$("instSheet").hidden=false}
+function doInstall(){
+  if(deferredInstall){var dp=deferredInstall;dp.prompt();dp.userChoice.then(function(){deferredInstall=null;showInstallBanner()});return}
+  openInstallHelp()}
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredInstall=e;showInstallBanner()});
+window.addEventListener("appinstalled",function(){deferredInstall=null;showInstallBanner();toast("Installed. Open it from your home screen.")});
+$("ibBtn").onclick=doInstall;
+$("instBtn").onclick=doInstall;
+$("ibX").onclick=function(){try{localStorage.setItem("cinearchive:ibx","1")}catch(e){}$("ib").hidden=true};
+$("shareBtn").onclick=function(){
+  var u=location.href.split("#")[0],data={title:"Your CineArchive",text:"A cinematic app for your film and TV collection",url:u};
+  if(navigator.share){navigator.share(data).catch(function(){})}
+  else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){toast("Link copied.")},function(){toast(u)})}
+  else toast(u)};
+showInstallBanner();
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;$("res").innerHTML="";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
   var t=$("fTitle").value.trim();if(!t){toast("Enter a title first.");return}
   var isT=tab==="tv";var nf={id:"f"+Date.now(),title:t,year:$("fYear").value.trim(),genre:$("fGenre").value.trim(),format:$("fFormat").value,watched:false,kind:isT?"tv":"film"};if(picked&&picked.title===t){nf.tmdbId=picked.id;nf.poster=picked.poster_path;nf.backdrop=picked.backdrop_path;nf.overview=picked.overview;nf.genres=(picked.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean)}films.push(nf);if(nf.kind==="tv"&&nf.tmdbId&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){});
   save();$("addSheet").hidden=true;render()});
-document.addEventListener("click",function(e){if(e.target.hasAttribute&&e.target.hasAttribute("data-close")||e.target.classList.contains("sheet")){$("addSheet").hidden=true;$("detail").hidden=true;$("setSheet").hidden=true;$("editSheet").hidden=true;$("autoSheet").hidden=true;$("listSheet").hidden=true}});
+document.addEventListener("click",function(e){if(e.target.hasAttribute&&e.target.hasAttribute("data-close")||e.target.classList.contains("sheet")){$("addSheet").hidden=true;$("detail").hidden=true;$("setSheet").hidden=true;$("editSheet").hidden=true;$("autoSheet").hidden=true;$("listSheet").hidden=true;$("instSheet").hidden=true}});
 /* detail */
 function openDetail(id){
   var f=films.filter(function(x){return x.id===id})[0];if(!f)return;

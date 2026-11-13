@@ -18,5 +18,12 @@
    "type": "image/png",
    "purpose": "any maskable"
   }
- ]
+ ],
+ "id": "./",
+ "description": "A cinematic archive for your film and TV collection, with Movie Nights and UK streaming.",
+ "categories": [
+  "entertainment",
+  "lifestyle"
+ ],
+ "orientation": "any"
 }
