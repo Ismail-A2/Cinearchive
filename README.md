@@ -22,7 +22,7 @@ needs, as long as you follow these three rules:
 
 Not sure whether your idea counts as commercial? Open an issue and ask first.
 
-The full legal text is in the [LICENSE] file.
+The full legal text is in the LICENCE file.
 
 ### Third-party credits
 
