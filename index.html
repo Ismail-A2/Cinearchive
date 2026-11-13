@@ -166,6 +166,12 @@ details.how a{color:var(--brass)}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
+.fchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.fchip{border:1px solid var(--line)}
+.fchip[aria-pressed=true]{background:var(--brass);color:#1a0d08;border-color:var(--brass)}
+.fmts{position:absolute;top:12px;right:12px;z-index:2;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.poster:not(.img):has(.age) .py{padding-left:44px}
+.fmts span{font-size:11px;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
 #res{max-height:min(46vh,380px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:2px}
 .res .rt{flex:1;min-width:0}
 .res .tick{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:14px;color:#1a0d08}
@@ -214,8 +220,7 @@ details.how a{color:var(--brass)}
   <button class="btn" id="srch" style="margin-top:8px">Find on TMDB</button><div id="res"></div><div class="selinfo" id="selInfo" hidden></div>
   <label for="fYear">Year</label><input id="fYear" inputmode="numeric" maxlength="4">
   <label for="fGenre">Genre</label><input id="fGenre" autocomplete="off">
-  <label for="fFormat">Format</label>
-  <select id="fFormat"><option>Blu-ray</option><option>4K UHD</option><option>DVD</option><option>Digital</option></select>
+  <label>Formats you own (choose any)</label><div class="fchips" id="fFormats"></div>
   <div class="foot"><button class="btn" data-close>Cancel</button><button class="btn primary" id="saveFilm">Save film</button></div>
 </div></div>
 
@@ -254,7 +259,7 @@ details.how a{color:var(--brass)}
   <label for="eTitle">Title</label><input id="eTitle" autocomplete="off">
   <label for="eYear">Year</label><input id="eYear" inputmode="numeric" maxlength="4">
   <label for="eGenre">Genres (comma separated)</label><input id="eGenre" autocomplete="off">
-  <label for="eFormat">Format</label><select id="eFormat"><option>Blu-ray</option><option>4K UHD</option><option>DVD</option><option>Digital</option></select>
+  <label>Formats you own (choose any)</label><div class="fchips" id="eFormats"></div>
   <label for="eRun">Runtime (minutes)</label><input id="eRun" inputmode="numeric" maxlength="3">
   <label for="eCert">Age rating</label><select id="eCert"><option value="">Unknown</option><option>U</option><option>PG</option><option>12A</option><option>12</option><option>15</option><option>18</option></select>
   <div class="foot"><button class="btn" data-close>Cancel</button><button class="btn primary" id="eSave">Save</button></div>
@@ -309,8 +314,8 @@ function render(){
   var list=films.filter(function(f){
     if(isTV(f)!==(tab==="tv"))return false;
     if(q&&(f.title+" "+(f.genre||"")+" "+(f.year||"")).toLowerCase().indexOf(q)<0)return false;
-    if(filter==="Physical")return f.format!=="Digital";
-    if(filter==="Digital")return f.format==="Digital";
+    if(filter==="Physical")return fmts(f).some(function(x){return x!=="Digital"});
+    if(filter==="Digital")return fmts(f).indexOf("Digital")>=0;
     if(filter==="Unwatched")return !f.watched;
     return true});
   if(listId){var L=lists.filter(function(x){return x.id===listId})[0];list=L?list.filter(function(f){return L.ids.indexOf(f.id)>=0}):list}
@@ -320,7 +325,7 @@ function render(){
   $("count").textContent=tab==="tv"?films.filter(isTV).length+" TV shows in your archive":films.filter(function(f){return !isTV(f)}).length+" films in your archive";
   $("grid").innerHTML=list.map(function(f){
     var i=sel.indexOf(f.id);
-    return'<button class="card'+(i>=0?" sel":"")+'" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,'<span class="badge">'+esc(f.format)+'</span>'+(f.watched?'<span class="seen">Seen</span>':"")+(f.cert?'<span class="age">'+esc(f.cert)+'</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
+    return'<button class="card'+(i>=0?" sel":"")+'" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,fmtBadges(f)+(f.watched?'<span class="seen">Seen</span>':"")+(f.cert?'<span class="age">'+esc(f.cert)+'</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
   $("empty").hidden=list.length>0;
   if(!list.length)$("empty").textContent=(tab==="tv"?films.some(isTV):films.some(function(f){return !isTV(f)}))?"No matches. Try another search or filter.":(tab==="tv"?"No TV shows yet. Tap Add TV show to start your collection.":"Your archive is empty. Tap Add film to start your collection.");
   if(armed){clearTimeout(armed);armed=0}
@@ -435,7 +440,7 @@ function openStream(id){
   var m=sall().filter(function(x){return x.id===id})[0];if(!m)return;
   $("detailBody").innerHTML=(m.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(m.backdrop)+')"></div>':"")+'<div class="row">'+poster(m)+'<div><h2>'+esc(m.title)+'</h2><p class="meta">'+esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+'</p><p class="meta">Included with: '+esc(m.svc.join(", "))+'</p>'+(m.overview?'<p class="ov">'+esc(m.overview)+'</p>':"")+'</div></div><div class="foot"><button class="btn" data-close>Close</button>'+(owned(m)?"":'<button class="btn primary" id="sAdd">Add to my collection</button>')+'</div>';
   $("detail").hidden=false;
-  if(!owned(m))$("sAdd").onclick=function(){films.push({id:"f"+Date.now(),title:m.title,year:m.year,genre:m.genre,format:"Digital",watched:false,tmdbId:m.tmdbId,poster:m.poster,backdrop:m.backdrop,overview:m.overview,kind:m.kind,genres:m.genres});save();$("detail").hidden=true;render();toast("Added to your collection.")}}
+  if(!owned(m))$("sAdd").onclick=function(){films.push({id:"f"+Date.now(),title:m.title,year:m.year,genre:m.genre,format:"Digital",formats:["Digital"],watched:false,tmdbId:m.tmdbId,poster:m.poster,backdrop:m.backdrop,overview:m.overview,kind:m.kind,genres:m.genres});save();$("detail").hidden=true;render();toast("Added to your collection.")}}
 async function refreshStream(quiet){
   if(busy)return;
   if(!tkey){if(!quiet)toast("Add your TMDB key in Settings first.");return}
@@ -482,9 +487,9 @@ $("impFile").onchange=function(){
   r.onload=function(){
     try{var d=JSON.parse(r.result),arr=Array.isArray(d)?d:d.films;if(!Array.isArray(arr))throw 0;var add=0;
       arr.forEach(function(x){if(!x||!x.title)return;
-        var dupe=films.some(function(o){return o.id===x.id||(x.tmdbId&&o.tmdbId===x.tmdbId)||(o.title.toLowerCase()===String(x.title).toLowerCase()&&String(o.year)===String(x.year))});
-        if(dupe)return;
-        films.push({id:x.id||"f"+Date.now()+"-"+add,title:String(x.title),year:x.year||"",genre:x.genre||"",format:x.format||"Digital",watched:!!x.watched,tmdbId:x.tmdbId,poster:x.poster,backdrop:x.backdrop,overview:x.overview,genres:x.genres,runtime:x.runtime,cert:x.cert,det:x.det,kind:x.kind,seasons:x.seasons});add++});
+        var ex=films.filter(function(o){return o.id===x.id||(x.tmdbId&&o.tmdbId===x.tmdbId)||(o.title.toLowerCase()===String(x.title).toLowerCase()&&String(o.year)===String(x.year))})[0];
+        if(ex){(x.formats||(x.format?[x.format]:[])).forEach(function(q){addFmt(ex,q)});return}
+        films.push({id:x.id||"f"+Date.now()+"-"+add,title:String(x.title),year:x.year||"",genre:x.genre||"",format:x.format||"Digital",formats:x.formats,watched:!!x.watched,tmdbId:x.tmdbId,poster:x.poster,backdrop:x.backdrop,overview:x.overview,genres:x.genres,runtime:x.runtime,cert:x.cert,det:x.det,kind:x.kind,seasons:x.seasons});add++});
       (d.lists||[]).forEach(function(l){if(!l||!l.name)return;var m=lists.filter(function(x){return x.name===l.name})[0];if(!m){m={id:"l"+Date.now()+Math.random().toString(36).slice(2,6),name:l.name,ids:[]};lists.push(m)}(l.ids||[]).forEach(function(i){if(m.ids.indexOf(i)<0)m.ids.push(i)})});
       (d.history||[]).forEach(function(h){if(h&&h.id&&!hist.some(function(x){return x.id===h.id}))hist.push(h)});saveLists();saveHist();buildListSel();
       save();render();$("bstat").textContent="Imported "+add+" new film"+(add===1?"":"s")+". "+(arr.length-add)+" already in your collection or skipped."
@@ -503,12 +508,12 @@ function extras(){
     var m=pool[Math.floor(Date.now()/864e5)%pool.length],k=tab+m.id;
     if(hero.getAttribute("data-k")!==k){
       hero.setAttribute("data-k",k);
-      var meta=esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+(tab==="str"?" \u00b7 "+esc(m.svc.join(", ")):" \u00b7 "+esc(m.format));
+      var meta=esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+(tab==="str"?" \u00b7 "+esc(m.svc.join(", ")):" \u00b7 "+esc(fmts(m).join(", ")));
       hero.innerHTML='<div class="bgi" style="background-image:url('+IMG+'w1280'+esc(m.backdrop)+')"></div><div class="txt"><div class="eyebrow">'+(tab==="str"?"Streaming in the UK":"From your archive")+'</div><h2>'+esc(m.title)+'</h2><div class="meta">'+meta+'</div>'+(m.overview?'<p>'+esc(m.overview)+'</p>':"")+'<button class="btn primary hbtn" data-id="'+m.id+'" data-s="'+(tab==="str"?"1":"")+'">View film</button></div>'}
     hero.hidden=false}
   var rails=$("rails");
   if((tab==="lib"||tab==="tv")&&def&&base.length>=8){
-    var rail=function(t,list){return list.length?'<div class="rail"><h3>'+t+'</h3><div class="row2">'+list.map(function(f){return'<button class="card" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,'<span class="badge">'+esc(f.format)+'</span>'+(f.watched?'<span class="seen">Seen</span>':""))+'</button>'}).join("")+'</div></div>':""};
+    var rail=function(t,list){return list.length?'<div class="rail"><h3>'+t+'</h3><div class="row2">'+list.map(function(f){return'<button class="card" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,fmtBadges(f)+(f.watched?'<span class="seen">Seen</span>':""))+'</button>'}).join("")+'</div></div>':""};
     rails.innerHTML=rail("Recently added",base.slice(-12).reverse())+rail("Not yet watched",base.filter(function(f){return !f.watched}).slice(0,12))}
   else rails.innerHTML=""}
 $("hero2").addEventListener("click",function(e){var b=e.target.closest(".hbtn");if(!b)return;var id=b.getAttribute("data-id");if(b.getAttribute("data-s"))openStream(id);else openDetail(id)});
@@ -551,12 +556,12 @@ $("listAdd").onclick=function(){if(!sel.length){toast("Select some films first."
 function openEdit(f){
   editing=f;$("eTitle").value=f.title;$("eYear").value=f.year||"";
   $("eGenre").value=(f.genres&&f.genres.length?f.genres:(f.genre?[f.genre]:[])).join(", ");
-  $("eFormat").value=f.format;$("eRun").value=f.runtime||"";$("eCert").value=f.cert||"";
+  editFm=fmts(f).slice();if(!editFm.length)editFm=["Digital"];drawFchips("eFormats",editFm);$("eRun").value=f.runtime||"";$("eCert").value=f.cert||"";
   $("detail").hidden=true;$("editSheet").hidden=false}
 $("eSave").onclick=function(){
   var f=editing;if(!f)return;var t=$("eTitle").value.trim();if(!t){toast("Enter a title first.");return}
   var g=$("eGenre").value.split(",").map(function(x){return x.trim()}).filter(Boolean);
-  f.title=t;f.year=$("eYear").value.trim();f.genres=g;f.genre=g[0]||"";f.format=$("eFormat").value;f.runtime=+$("eRun").value||0;f.cert=$("eCert").value;
+  f.title=t;f.year=$("eYear").value.trim();f.genres=g;f.genre=g[0]||"";setFmts(f,editFm);f.runtime=+$("eRun").value||0;f.cert=$("eCert").value;
   if(f.runtime||f.cert)f.det=1;
   save();$("editSheet").hidden=true;render()};
 function renderHistory(){
@@ -678,28 +683,44 @@ $("shareBtn").onclick=function(){
   else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){toast("Link copied.")},function(){toast(u)})}
   else toast(u)};
 showInstallBanner();
+/* multiple formats per entry */
+var FORMATS=["4K UHD","Blu-ray","DVD","Digital"],addFm=["Blu-ray"],editFm=[];
+function fmts(f){return f.formats&&f.formats.length?f.formats:(f.format?[f.format]:[])}
+function sortFm(a){return FORMATS.filter(function(x){return a.indexOf(x)>=0}).concat(a.filter(function(x){return FORMATS.indexOf(x)<0}))}
+function setFmts(f,a){f.formats=sortFm(a);f.format=f.formats[0]||""}
+function addFmt(f,q){var a=fmts(f).slice();if(a.indexOf(q)<0)a.push(q);setFmts(f,a)}
+function fmtBadges(f){var a=fmts(f);return a.length?'<span class="fmts">'+a.map(function(x){return'<span>'+esc(x)+'</span>'}).join("")+'</span>':""}
+function drawFchips(id,arr){$(id).innerHTML=FORMATS.map(function(x){return'<button type="button" class="chip fchip" data-x="'+x+'" aria-pressed="'+(arr.indexOf(x)>=0)+'">'+x+'</button>'}).join("")}
+function toggleFm(arr,b){var x=b.getAttribute("data-x"),i=arr.indexOf(x);if(i>=0){if(arr.length>1)arr.splice(i,1);else toast("Choose at least one format.")}else arr.push(x)}
+$("fFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(addFm,b);drawFchips("fFormats",addFm)};
+$("eFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(editFm,b);drawFchips("eFormats",editFm)};
+drawFchips("fFormats",addFm);
 /* add */
-$("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
+$("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;addFm=["Blu-ray"];drawFchips("fFormats",addFm);sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
   var keys=Object.keys(sel2);
   if(keys.length>1){
-    var isT2=tab==="tv",fmt=$("fFormat").value,added=0,skipped=0;
+    var isT2=tab==="tv",fm=addFm.slice(),added=0,skipped=0,merged=0;
     keys.forEach(function(k){var m=sel2[k],yr=(m.release_date||"").slice(0,4);
-      var dupe=films.some(function(o){return isTV(o)===isT2&&((o.tmdbId&&o.tmdbId===m.id)||(o.title.toLowerCase()===m.title.toLowerCase()&&String(o.year)===yr))});
-      if(dupe){skipped++;return}
-      var nf2={id:"f"+Date.now()+"-"+added,title:m.title,year:yr,genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean),format:fmt,watched:false,kind:isT2?"tv":"film",tmdbId:m.id,poster:m.poster_path,backdrop:m.backdrop_path,overview:m.overview};
+      var ex=films.filter(function(o){return isTV(o)===isT2&&((o.tmdbId&&o.tmdbId===m.id)||(o.title.toLowerCase()===m.title.toLowerCase()&&String(o.year)===yr))})[0];
+      if(ex){var b0=fmts(ex).length;fm.forEach(function(q){addFmt(ex,q)});if(fmts(ex).length>b0)merged++;else skipped++;return}
+      var nf2={id:"f"+Date.now()+"-"+added,title:m.title,year:yr,genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean),format:sortFm(fm)[0],formats:sortFm(fm),watched:false,kind:isT2?"tv":"film",tmdbId:m.id,poster:m.poster_path,backdrop:m.backdrop_path,overview:m.overview};
       films.push(nf2);added++;
       if(isT2&&tkey)tmdb("/tv/"+nf2.tmdbId).then(function(d){nf2.seasons=d.number_of_seasons;save();render()}).catch(function(){})});
     save();$("addSheet").hidden=true;sel2={};render();
-    toast("Added "+added+(isT2?" TV show":" film")+(added===1?"":"s")+(skipped?". Skipped "+skipped+" already in your collection.":"."));return}
+    toast("Added "+added+(isT2?" TV show":" film")+(added===1?"":"s")+(merged?". Added formats to "+merged+" you already had":"")+(skipped?". "+skipped+" already had these formats":"")+".");return}
   var t=$("fTitle").value.trim();if(!t){toast("Enter a title first.");return}
-  var isT=tab==="tv";var nf={id:"f"+Date.now(),title:t,year:$("fYear").value.trim(),genre:$("fGenre").value.trim(),format:$("fFormat").value,watched:false,kind:isT?"tv":"film"};if(picked&&picked.title===t){nf.tmdbId=picked.id;nf.poster=picked.poster_path;nf.backdrop=picked.backdrop_path;nf.overview=picked.overview;nf.genres=(picked.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean)}films.push(nf);if(nf.kind==="tv"&&nf.tmdbId&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){});
+  var isT=tab==="tv";
+  var yr1=$("fYear").value.trim(),pk=picked&&picked.title===t?picked:null;
+  var ex1=films.filter(function(o){return isTV(o)===isT&&((pk&&o.tmdbId&&o.tmdbId===pk.id)||(o.title.toLowerCase()===t.toLowerCase()&&String(o.year)===String(yr1||(pk?(pk.release_date||"").slice(0,4):""))))})[0];
+  if(ex1){var b1=fmts(ex1).length;addFm.forEach(function(q){addFmt(ex1,q)});save();$("addSheet").hidden=true;render();toast(fmts(ex1).length>b1?"Added "+sortFm(addFm).join(", ")+" to "+ex1.title+".":ex1.title+" already has "+(addFm.length>1?"those formats":addFm[0])+".");return}
+  var nf={id:"f"+Date.now(),title:t,year:$("fYear").value.trim(),genre:$("fGenre").value.trim(),format:sortFm(addFm)[0],formats:sortFm(addFm),watched:false,kind:isT?"tv":"film"};if(picked&&picked.title===t){nf.tmdbId=picked.id;nf.poster=picked.poster_path;nf.backdrop=picked.backdrop_path;nf.overview=picked.overview;nf.genres=(picked.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean)}films.push(nf);if(nf.kind==="tv"&&nf.tmdbId&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){});
   save();$("addSheet").hidden=true;render()});
 document.addEventListener("click",function(e){if(e.target.hasAttribute&&e.target.hasAttribute("data-close")||e.target.classList.contains("sheet")){$("addSheet").hidden=true;$("detail").hidden=true;$("setSheet").hidden=true;$("editSheet").hidden=true;$("autoSheet").hidden=true;$("listSheet").hidden=true;$("instSheet").hidden=true}});
 /* detail */
 function openDetail(id){
   var f=films.filter(function(x){return x.id===id})[0];if(!f)return;
-  $("detailBody").innerHTML=(f.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(f.backdrop)+')"></div>':"")+'<div class="row">'+poster(f)+'<div><h2>'+esc(f.title)+'</h2><p class="meta">'+esc(f.year||"Year unknown")+'</p><p class="meta">'+esc(f.genres&&f.genres.length?f.genres.join(", "):(f.genre||"No genre"))+'</p><p class="meta">'+esc(f.format)+(f.runtime?" \u00b7 "+f.runtime+" min":"")+(f.cert?" \u00b7 "+esc(f.cert):"")+(f.seasons?" \u00b7 "+f.seasons+" season"+(f.seasons>1?"s":""):"")+'</p>'+(f.overview?'<p class="ov">'+esc(f.overview)+'</p>':"")+''+listChips(f)+'</div></div><div class="foot"><button class="btn" id="dEdit">Edit</button><button class="btn" id="dDel">Remove from archive</button><button class="btn" id="dSeen">'+(f.watched?"Mark as unwatched":"Mark as watched")+'</button><button class="btn primary" data-close>Done</button></div>';
+  $("detailBody").innerHTML=(f.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(f.backdrop)+')"></div>':"")+'<div class="row">'+poster(f)+'<div><h2>'+esc(f.title)+'</h2><p class="meta">'+esc(f.year||"Year unknown")+'</p><p class="meta">'+esc(f.genres&&f.genres.length?f.genres.join(", "):(f.genre||"No genre"))+'</p><p class="meta">'+esc(fmts(f).join(" \u00b7 "))+(f.runtime?" \u00b7 "+f.runtime+" min":"")+(f.cert?" \u00b7 "+esc(f.cert):"")+(f.seasons?" \u00b7 "+f.seasons+" season"+(f.seasons>1?"s":""):"")+'</p>'+(f.overview?'<p class="ov">'+esc(f.overview)+'</p>':"")+''+listChips(f)+'</div></div><div class="foot"><button class="btn" id="dEdit">Edit</button><button class="btn" id="dDel">Remove from archive</button><button class="btn" id="dSeen">'+(f.watched?"Mark as unwatched":"Mark as watched")+'</button><button class="btn primary" data-close>Done</button></div>';
   $("detail").hidden=false;
   $("dSeen").onclick=function(){f.watched=!f.watched;save();$("detail").hidden=true;render()};
   $("dEdit").onclick=function(){openEdit(f)};
@@ -810,7 +831,7 @@ async function runDraw(ids){
   $("again").onclick=function(){dropWin();runDraw(ids)};
   $("drop").onclick=function(){var rest=ids.filter(function(x){return x!==w.id});if(rest.length<2){toast("Not enough films left to redraw.");return}ids=rest;dropWin();runDraw(rest)};
   $("seenIt").onclick=function(){
-    if(w.svc){if(owned(w)){toast("Already in your collection.");return}films.push({id:"f"+Date.now(),title:w.title,year:w.year,genre:w.genre,format:"Digital",watched:false,tmdbId:w.tmdbId,poster:w.poster,backdrop:w.backdrop,overview:w.overview,kind:w.kind,genres:w.genres});save();toast("Added to your collection.");render();return}
+    if(w.svc){if(owned(w)){toast("Already in your collection.");return}films.push({id:"f"+Date.now(),title:w.title,year:w.year,genre:w.genre,format:"Digital",formats:["Digital"],watched:false,tmdbId:w.tmdbId,poster:w.poster,backdrop:w.backdrop,overview:w.overview,kind:w.kind,genres:w.genres});save();toast("Added to your collection.");render();return}
     w.watched=true;save();toast(w.title+" marked as watched.");render()};
   $("closeDraw").onclick=function(){token++;beat(0);dr.hidden=true;dr.className="draw";render()};
 }
