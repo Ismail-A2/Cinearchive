@@ -128,6 +128,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opac
 .draw .stage{transform:scale(var(--z,1));transition:opacity .5s,transform 1.6s ease}
 .draw .say,.draw .dact{transition:opacity .5s}
 .draw.blackout .say,.draw.blackout .stage,.draw.blackout .dact{opacity:0}
+.draw.dark .stage,.draw.dark .dact{opacity:0}
 .draw .stage .c.out{filter:grayscale(1) brightness(.4) blur(1px)}
 .draw.shake .stage{animation:shake .5s}
 @keyframes shake{0%,100%{translate:0}20%{translate:-9px 4px}40%{translate:8px -5px}60%{translate:-6px -3px}80%{translate:4px 4px}}
@@ -144,6 +145,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opac
 @keyframes stampIn{from{transform:translate(-50%,-50%) rotate(-16deg) scale(2.6);opacity:0}}
 .say small{display:block;font:400 12px/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;color:var(--brass);margin:0 0 8px}
 .bar[hidden]{display:none}
+.age{position:absolute;bottom:10px;left:10px;z-index:3;font:600 11px/1 var(--sans);padding:3px 7px;border-radius:5px;border:1px solid var(--line);background:rgba(0,0,0,.65);color:var(--ivory)}
 .banner{width:calc(100% - 48px);max-width:1152px;margin:10px auto 0;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:rgba(201,164,92,.1);font-size:14px}
 .banner[hidden]{display:none}
 details.how{margin:12px 0;font-size:14px}
@@ -188,6 +190,7 @@ details.how a{color:var(--brass)}
 <div class="bar" id="bar">
   <input id="q" type="search" placeholder="Search your collection" aria-label="Search your collection">
   <select id="sortSel" aria-label="Sort"><option value="title">A–Z</option><option value="year">Newest first</option><option value="old">Oldest first</option><option value="added">Recently added</option><option value="unwatched">Unwatched first</option></select>
+  <select id="ageSel" aria-label="Age rating"><option value="">Any age rating</option><option value="0">U</option><option value="1">PG</option><option value="2">12 / 12A</option><option value="3">15</option><option value="4">18</option><option value="x">Unrated / unknown</option></select>
   <select id="listSel" aria-label="List"></select><button class="btn" id="listsBtn">Lists</button>
   <span id="chips"></span>
 </div>
@@ -274,10 +277,8 @@ details.how a{color:var(--brass)}
 <script>
 (function(){
 var KEY="cinearchive:v1";
-var SEED=[["Metropolis",1927,"Sci-fi","Digital",1],["Nosferatu",1922,"Horror","Digital",1],["Casablanca",1942,"Romance","Blu-ray",1],["Vertigo",1958,"Thriller","4K UHD",0],["Seven Samurai",1954,"Action","Blu-ray",0],["2001: A Space Odyssey",1968,"Sci-fi","4K UHD",1],["Blade Runner",1982,"Sci-fi","4K UHD",0],["Alien",1979,"Horror","Blu-ray",1],["Parasite",2019,"Thriller","Blu-ray",0],["The Godfather",1972,"Crime","4K UHD",1],["Spirited Away",2001,"Animation","DVD",0],["Mad Max: Fury Road",2015,"Action","Digital",0]];
 var films=[];
 try{var raw=localStorage.getItem(KEY);if(raw)films=JSON.parse(raw)}catch(e){}
-if(!films.length){films=SEED.map(function(s,i){return{id:"s"+i,title:s[0],year:s[1],genre:s[2],format:s[3],watched:!!s[4]}})}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(films))}catch(e){}}
 var $=function(id){return document.getElementById(id)};
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
@@ -298,13 +299,15 @@ function render(){
     if(filter==="Unwatched")return !f.watched;
     return true});
   if(listId){var L=lists.filter(function(x){return x.id===listId})[0];list=L?list.filter(function(f){return L.ids.indexOf(f.id)>=0}):list}
+  queueCerts(list);if(ageKey)list=list.filter(ageOK);
   var ix=function(f){return films.indexOf(f)};
-  list.sort(sortKey==="year"?function(a,b){return(+b.year||0)-(+a.year||0)}:sortKey==="old"?function(a,b){return(+a.year||9999)-(+b.year||9999)}:sortKey==="added"?function(a,b){return ix(b)-ix(a)}:sortKey==="unwatched"?function(a,b){return(a.watched?1:0)-(b.watched?1:0)||a.title.localeCompare(b.title)}:function(a,b){return a.title.localeCompare(b.title)});
+  list.sort(sortKey==="ageup"?ageUp:sortKey==="agedown"?ageDown:sortKey==="year"?function(a,b){return(+b.year||0)-(+a.year||0)}:sortKey==="old"?function(a,b){return(+a.year||9999)-(+b.year||9999)}:sortKey==="added"?function(a,b){return ix(b)-ix(a)}:sortKey==="unwatched"?function(a,b){return(a.watched?1:0)-(b.watched?1:0)||a.title.localeCompare(b.title)}:function(a,b){return a.title.localeCompare(b.title)});
   $("count").textContent=tab==="tv"?films.filter(isTV).length+" TV shows in your archive":films.filter(function(f){return !isTV(f)}).length+" films in your archive";
   $("grid").innerHTML=list.map(function(f){
     var i=sel.indexOf(f.id);
-    return'<button class="card'+(i>=0?" sel":"")+'" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,'<span class="badge">'+esc(f.format)+'</span>'+(f.watched?'<span class="seen">Seen</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
+    return'<button class="card'+(i>=0?" sel":"")+'" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,'<span class="badge">'+esc(f.format)+'</span>'+(f.watched?'<span class="seen">Seen</span>':"")+(f.cert?'<span class="age">'+esc(f.cert)+'</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
   $("empty").hidden=list.length>0;
+  if(!list.length)$("empty").textContent=(tab==="tv"?films.some(isTV):films.some(function(f){return !isTV(f)}))?"No matches. Try another search or filter.":(tab==="tv"?"No TV shows yet. Tap Add TV show to start your collection.":"Your archive is empty. Tap Add film to start your collection.");
   if(armed){clearTimeout(armed);armed=0}
   $("tray").hidden=!(night||del);
   $("trayN").textContent=sel.length;
@@ -382,8 +385,9 @@ function owned(m){return films.some(function(f){return isTV(f)===(m.kind==="tv")
 function renderStream(){
   var q=$("q").value.trim().toLowerCase();
   var list=sitems().filter(function(m){return(!q||(m.title+" "+(m.genre||"")).toLowerCase().indexOf(q)>=0)&&(filter==="All"||m.svc.indexOf(filter)>=0)});
+  queueCerts(list);if(ageKey)list=list.filter(ageOK);list=sortStream(list);
   $("count").textContent=stream.at?sitems().length+(skind==="tv"?" TV shows":" films")+" on UK streaming \u00b7 updated "+new Date(stream.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+(stream.miss&&stream.miss.length?" \u00b7 not found: "+stream.miss.join(", "):""):"Streaming shelf not loaded yet";
-  $("grid").innerHTML=list.map(function(m){var i=sel.indexOf(m.id);return'<button class="card'+(i>=0?" sel":"")+'" data-sid="'+m.id+'" aria-label="'+esc(m.title)+'">'+poster(m,'<span class="badge">'+esc(m.svc[0])+(m.svc.length>1?" +"+(m.svc.length-1):"")+'</span>'+(owned(m)?'<span class="seen">Owned</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
+  $("grid").innerHTML=list.map(function(m){var i=sel.indexOf(m.id);return'<button class="card'+(i>=0?" sel":"")+'" data-sid="'+m.id+'" aria-label="'+esc(m.title)+'">'+poster(m,'<span class="badge">'+esc(m.svc[0])+(m.svc.length>1?" +"+(m.svc.length-1):"")+'</span>'+(owned(m)?'<span class="seen">Owned</span>':"")+(m.cert?'<span class="age">'+esc(m.cert)+'</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
   $("empty").hidden=list.length>0;
   $("empty").textContent=sitems().length?"No matches.":"Add your TMDB key in Settings, then tap Refresh streaming.";
   $("tray").hidden=!night;$("trayN").textContent=sel.length;$("trayOf").textContent=" of 30 chosen";$("traySub").textContent="Pick 2 to 30 films, then start the draw.";
@@ -397,7 +401,7 @@ function openStream(id){
 async function refreshStream(quiet){
   if(busy)return;
   if(!tkey){if(!quiet)toast("Add your TMDB key in Settings first.");return}
-  busy=true;var by={},byT={},miss=[];
+  busy=true;var by={},byT={},miss=[],oldm={};sall().forEach(function(m){oldm[m.id]=m});
   try{
     var pv=await tmdb("/watch/providers/movie",{watch_region:"GB",language:"en-GB"});
     var pt=await tmdb("/watch/providers/tv",{watch_region:"GB",language:"en-GB"});
@@ -412,7 +416,7 @@ async function refreshStream(quiet){
           if(tab==="str")$("count").textContent="Checking "+name+(tvk?" (TV)":"")+"\u2026";
           var d=await tmdb(tvk?"/discover/tv":"/discover/movie",{watch_region:"GB",with_watch_providers:ids.join("|"),with_watch_monetization_types:"flatrate|free|ads",sort_by:"popularity.desc",language:"en-GB",page:pg});
           d.results.forEach(function(m){norm(m);var k=(tvk?"v":"t")+m.id;var o=bag[k]||(bag[k]={id:k,tmdbId:m.id,kind:tvk?"tv":"film",title:m.title,year:(m.release_date||"").slice(0,4),genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(x){return GEN[x]}).filter(Boolean),poster:m.poster_path,backdrop:m.backdrop_path,overview:(m.overview||"").slice(0,240),svc:[],pop:m.popularity});if(o.svc.indexOf(name)<0)o.svc.push(name)})}}}
-    var fin=function(b){return Object.keys(b).map(function(k){return b[k]}).filter(function(m){return m.poster}).sort(function(a,b){return b.pop-a.pop}).slice(0,450)};
+    var fin=function(b){return Object.keys(b).map(function(k){return b[k]}).filter(function(m){return m.poster}).map(function(m){var o=oldm[m.id];if(o&&o.det){m.cert=o.cert;m.runtime=o.runtime;m.det=1;if(o.seasons)m.seasons=o.seasons}return m}).sort(function(a,b){return b.pop-a.pop}).slice(0,450)};
     stream={at:Date.now(),miss:miss,items:fin(by),tv:fin(byT)};saveStream();
     if(!quiet)toast(miss.length?"Not found for UK: "+miss.join(", "):"Streaming shelf updated.")
   }catch(e){if(!quiet)toast(e.message)}
@@ -422,9 +426,9 @@ $("tabs").onclick=function(e){
   var t=e.target.getAttribute("data-t");if(!t||t===tab)return;
   tab=t;del=false;filter="All";if(!night)sel=[];
   [].forEach.call($("tabs").children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-t")===t)});
-  $("addBtn").hidden=$("delBtn").hidden=(t==="str"||t==="his");$("addBtn").textContent=t==="tv"?"Add TV show":"Add film";$("nightBtn").hidden=(t==="his");$("refBtn").hidden=t!=="str";$("bar").hidden=t==="his";$("sortSel").hidden=$("listSel").hidden=$("listsBtn").hidden=(t!=="lib"&&t!=="tv");if(t==="his"){night=false;sel=[]}
+  $("addBtn").hidden=$("delBtn").hidden=(t==="str"||t==="his");$("addBtn").textContent=t==="tv"?"Add TV show":"Add film";$("nightBtn").hidden=(t==="his");$("refBtn").hidden=t!=="str";$("bar").hidden=t==="his";$("sortSel").hidden=$("ageSel").hidden=(t==="his");$("listSel").hidden=$("listsBtn").hidden=(t!=="lib"&&t!=="tv");if(t==="his"){night=false;sel=[]}
   $("empty").textContent=t==="tv"?"No TV shows yet. Tap Add TV show to start your collection.":"No films match. Try another search or add a film.";
-  buildChips();render()};
+  buildChips();buildSortSel();render()};
 /* backup */
 $("expBtn").onclick=async function(){
   var data=JSON.stringify({app:"your-cinearchive",version:1,exported:new Date().toISOString(),films:films,lists:lists,history:hist},null,1);
@@ -453,8 +457,8 @@ $("impFile").onchange=function(){
 function extras(){
   $("kb").hidden=!!tkey;
   if(tab==="his"){$("hero2").hidden=true;$("rails").innerHTML="";$("gridTitle").textContent="Movie Night history";return}
-  var q=$("q").value.trim(),def=!q&&filter==="All"&&!night&&!del&&!listId&&sortKey==="title",hero=$("hero2");
-  $("gridTitle").textContent=tab==="str"?(skind==="tv"?"Popular TV shows on UK streaming":"Popular films on UK streaming"):(def?(tab==="tv"?"All TV shows":"All films"):(q||filter!=="All"||listId?"Results":"All films"));
+  var q=$("q").value.trim(),def=!q&&filter==="All"&&!night&&!del&&!listId&&sortKey==="title"&&!ageKey,hero=$("hero2");
+  $("gridTitle").textContent=tab==="str"?(skind==="tv"?"Popular TV shows on UK streaming":"Popular films on UK streaming"):(def?(tab==="tv"?"All TV shows":"All films"):(q||filter!=="All"||listId||ageKey?"Results":"All films"));
   var base=tab==="str"?sitems():films.filter(function(f){return isTV(f)===(tab==="tv")}),pool=base.filter(function(m){return m.backdrop});
   if(!def||!pool.length){hero.hidden=true;hero.innerHTML="";hero.removeAttribute("data-k")}
   else{
@@ -489,7 +493,8 @@ $("detailBody").addEventListener("click",function(e){
 function buildListSel(){
   $("listSel").innerHTML='<option value="">All films</option>'+lists.map(function(l){return'<option value="'+l.id+'">'+esc(l.name)+'</option>'}).join("");
   if(!lists.some(function(l){return l.id===listId}))listId="";$("listSel").value=listId}
-$("sortSel").onchange=function(){sortKey=this.value;render()};
+$("sortSel").onchange=function(){if(tab==="str")ssort=this.value;else sortKey=this.value;render()};
+$("ageSel").onchange=function(){ageKey=this.value;render()};
 $("listSel").onchange=function(){listId=this.value;render()};
 function openLists(mode){lmode=mode;$("lsHead").textContent=mode==="add"?"Add "+sel.length+" selected to a list":"Your lists";renderLs();$("lsName").value="";$("listSheet").hidden=false}
 function renderLs(){$("lsList").innerHTML=lists.length?lists.map(function(l){return'<div class="res" style="justify-content:space-between"><button class="chip" data-lp="'+l.id+'">'+esc(l.name)+' <span class="meta">'+l.ids.length+'</span></button><button class="chip" data-ld="'+l.id+'">Delete</button></div>'}).join(""):'<p class="meta">No lists yet. Create one below.</p>'}
@@ -578,6 +583,35 @@ $("aGo2").onclick=function(){autoPick(true)};
 function isTV(f){return f.kind==="tv"}
 function norm(m){if(m.name&&!m.title)m.title=m.name;if(m.first_air_date&&!m.release_date)m.release_date=m.first_air_date;return m}
 $("kbBtn").onclick=function(){$("setBtn").click()};
+/* age rating filter + sort */
+var ageKey="",ssort="pop",certBusy=false,certWarned=false;
+function rk(c){var r=RANK[c];return r===undefined?99:r}
+function ageUp(a,b){return rk(a.cert)-rk(b.cert)||a.title.localeCompare(b.title)}
+function ageDown(a,b){var x=rk(a.cert),y=rk(b.cert);x=x===99?-1:x;y=y===99?-1:y;return y-x||a.title.localeCompare(b.title)}
+function ageOK(f){
+  if(!ageKey)return true;var r=RANK[f.cert];
+  if(ageKey==="x")return r===undefined;
+  if(r===undefined)return false;
+  return ageKey==="4"?r>=4:r===+ageKey}
+function sortStream(l){
+  l=l.slice();var k=ssort;
+  if(k==="title")l.sort(function(a,b){return a.title.localeCompare(b.title)});
+  else if(k==="year")l.sort(function(a,b){return(+b.year||0)-(+a.year||0)});
+  else if(k==="ageup")l.sort(ageUp);else if(k==="agedown")l.sort(ageDown);
+  return l}
+function buildSortSel(){
+  var o=tab==="str"?[["pop","Most popular"],["title","A\u2013Z"],["year","Newest first"],["ageup","Age rating: lowest first"],["agedown","Age rating: highest first"]]:[["title","A\u2013Z"],["year","Newest first"],["old","Oldest first"],["added","Recently added"],["unwatched","Unwatched first"],["ageup","Age rating: lowest first"],["agedown","Age rating: highest first"]];
+  $("sortSel").innerHTML=o.map(function(x){return'<option value="'+x[0]+'">'+x[1]+'</option>'}).join("");
+  $("sortSel").value=tab==="str"?ssort:sortKey}
+function needAge(){var k=tab==="str"?ssort:sortKey;return !!ageKey||k==="ageup"||k==="agedown"}
+function queueCerts(list){
+  if(certBusy||!needAge())return;
+  if(!tkey){if(!certWarned){certWarned=true;toast("Age ratings need your TMDB key. Add it in Settings.")}return}
+  var now=Date.now(),todo=list.filter(function(f){return f.tmdbId&&!f.det&&(!f.dfail||now-f.dfail>6e5)});
+  if(!todo.length)return;
+  certBusy=true;var i=0,done=0;
+  var worker=async function(){while(i<todo.length){var f=todo[i++];try{await getDetails(f)}catch(e){f.dfail=Date.now()}done++;if(done%8===0||done===todo.length)$("count").textContent="Looking up age ratings "+done+" of "+todo.length+"\u2026"}};
+  Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]).then(function(){save();saveStream();certBusy=false;render()}).catch(function(){certBusy=false})}
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;$("res").innerHTML="";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
@@ -605,7 +639,9 @@ var hb=null;
 function beat(rate){clearInterval(hb);hb=null;if(!rate)return;hb=setInterval(function(){tone(58,.18,"sine",.17);setTimeout(function(){tone(50,.22,"sine",.13)},170)},rate)}
 async function runDraw(ids){
   var my=++token;fast=false;scale=1;beat(0);var T0=performance.now();
-  var E=[0,0,19200,8200,7000,4600,4600,2900,2900,2900,2900],est=function(n){var t=0;for(var i=2;i<=Math.min(n,10);i++)t+=E[i];if(n>10)t+=Math.ceil((n-10)/5)*2600;return t};
+  var E=[0,0,27000,10600,9000,8000,8000,6900,6900,5600,5600],est=function(n){var t=0;for(var i=2;i<=Math.min(n,10);i++)t+=E[i];if(n>10)t+=Math.ceil((n-10)/4)*5300;return t};
+  var SUSP=["Who\u2019s next?","The tension builds\u2026","Someone is about to go\u2026","Don\u2019t blink.","Nobody is safe.","This is getting serious\u2026"];
+  var line=function(a){return a[rnd(a.length)]};
   var dr=$("draw"),say=$("say"),st=$("stage");
   var mk=function(cls,html){var e=dr.querySelector("."+cls);if(!e){e=document.createElement("div");e.className=cls;if(html)e.innerHTML=html;dr.appendChild(e)}return e};
   mk("lbt");mk("lbb");mk("rays");var ld=mk("leader",'<i class="ring"></i><i class="xh"></i><b></b>');
@@ -619,37 +655,44 @@ async function runDraw(ids){
   say.textContent="";dr.hidden=false;
   $("dact").innerHTML='<button class="btn" id="skip">Skip to the end</button>';$("skip").onclick=function(){fast=true};
   var alive=list.slice(),el=function(f){return st.querySelector('[data-id="'+f.id+'"]')};
-  var light=function(f){
-    [].forEach.call(st.querySelectorAll(".lit"),function(x){x.classList.remove("lit")});
-    if(f)el(f).classList.add("lit")};
+  var light=function(f){[].forEach.call(st.querySelectorAll(".lit"),function(x){x.classList.remove("lit")});if(f)el(f).classList.add("lit")};
   say.innerHTML="<small>Tonight\u2019s</small>Feature Presentation";
-  await sleep(1000);
+  await sleep(1800);
+  var rc=list.length<=12?480:220;
+  for(var r=0;r<list.length;r++){
+    if(my!==token)return;
+    light(list[r]);say.innerHTML="<small>Contender "+(r+1)+" of "+list.length+"</small>"+esc(list[r].title);tone(260+r*14,.06,"triangle",.04);await sleep(rc)}
+  light(null);say.innerHTML="<small>Tonight\u2019s draw</small>Let\u2019s begin";await sleep(900);
   for(var c=3;c>0;c--){
     if(my!==token)return;
-    ld.classList.add("on");ld.querySelector("b").textContent=c;tone([0,330,262,196][c],.4,"triangle",.09);
-    var t0=performance.now(),dur=fast?10:800;
+    ld.classList.add("on");ld.querySelector("b").textContent=c;tone([0,330,262,196][c],.45,"triangle",.09);
+    var t0=performance.now(),dur=fast?10:1100;
     await new Promise(function(res){(function f(t){var k=Math.min(1,(t-t0)/dur);ld.style.setProperty("--a",(k*360)+"deg");if(k<1)requestAnimationFrame(f);else res()})(t0)})}
   ld.classList.remove("on");tone(60,.6,"sawtooth",.08);
   while(alive.length>1){
     if(my!==token)return;
     var n=alive.length,fin=n===2;
-    var left=90000-(performance.now()-T0)-2800,need=est(n);scale=need>left?Math.max(.35,left/Math.max(need,1)):1;
+    var left=170000-(performance.now()-T0)-7000,need=est(n);scale=need>left?Math.max(.4,left/Math.max(need,1)):1;
     if(n>10){
-      var k=Math.min(5,n-10),vs=shuffle(alive).slice(0,k);
-      st.style.setProperty("--z",1);beat(0);say.textContent=n+" films";await sleep(450);
-      for(var b=0;b<8;b++){light(alive[rnd(n)]);tone(300+b*30,.05,"square",.025);await sleep(60);if(my!==token)return}
-      light(null);say.textContent=k+" films out";
-      vs.forEach(function(v){var e=el(v);e.querySelector(".poster").insertAdjacentHTML("beforeend",'<span class="stamp">OUT</span>');e.classList.add("hit")});
-      dr.classList.remove("shake");void dr.offsetWidth;dr.classList.add("shake");tone(70,.6,"sawtooth",.1);tone(42,.9,"sine",.16);
-      await sleep(800);if(my!==token)return;
+      var k=Math.min(4,n-10),vs=shuffle(alive).slice(0,k);
+      st.style.setProperty("--z",1);beat(0);
+      say.innerHTML="<small>"+n+" films</small>"+line(SUSP);await sleep(1000);
+      for(var b2=0;b2<12;b2++){light(alive[rnd(n)]);tone(300+b2*26,.05,"square",.025);await sleep(65);if(my!==token)return}
+      light(null);say.textContent="\u2026";tone(120,.5,"sine",.09);await sleep(700);
+      for(var q=0;q<vs.length;q++){
+        var ve=el(vs[q]);say.textContent="Out: "+vs[q].title;
+        ve.querySelector(".poster").insertAdjacentHTML("beforeend",'<span class="stamp">OUT</span>');ve.classList.add("hit");
+        dr.classList.remove("shake");void dr.offsetWidth;dr.classList.add("shake");tone(70,.5,"sawtooth",.1);tone(42,.7,"sine",.15);
+        await sleep(380);if(my!==token)return}
+      await sleep(500);
       vs.forEach(function(v){var e=el(v);e.classList.remove("hit");e.classList.add("out");alive.splice(alive.indexOf(v),1)});
-      await sleep(650);continue}
+      await sleep(800);continue}
     dr.classList.toggle("tense",n<=3);dr.classList.toggle("bars2",n<=3);
     st.style.setProperty("--z",n>6?1:n>4?1.05:n>3?1.09:n>2?1.15:1.24);
     beat(n>6?0:n>4?1150:n>3?950:n>2?780:620);
-    say.textContent=fin?"The final two":n+" films left";
-    await sleep(n>6?500:1000);
-    var victim=alive[rnd(n)],hops=fin?22:n<=4?15:n<=6?10:7,d=fin?85:70,prev=null;
+    say.innerHTML="<small>"+(fin?"The final two":n+" films left")+"</small>"+(fin?"One night. One film.":line(SUSP));
+    await sleep(n>6?1400:n>3?1700:2000);
+    var victim=alive[rnd(n)],hops=fin?24:n<=3?18:n<=4?16:n<=6?14:12,d=fin?85:70,prev=null;
     for(var i=0;i<hops;i++){
       var pick=alive[rnd(n)];if(pick===prev)pick=alive[(alive.indexOf(pick)+1)%n];
       light(pick);prev=pick;tone(300+i*24,.07,"square",.03);
@@ -657,31 +700,34 @@ async function runDraw(ids){
     var others=alive.filter(function(x){return x!==victim});
     if(fin){
       var keep=others[0];
-      light(keep);say.textContent="\u2026";tone(150,.6,"sine",.09);await sleep(1500);if(my!==token)return;
-      light(victim);tone(210,.4,"sine",.09);await sleep(650);if(my!==token)return;
-      light(keep);tone(150,.6,"sine",.09);await sleep(1700);if(my!==token)return}
-    else if(n<=4){var decoy=others[rnd(others.length)];light(decoy);say.textContent="\u2026";tone(150,.6,"sine",.09);await sleep(1300);if(my!==token)return}
+      light(keep);say.textContent="\u2026";tone(150,.6,"sine",.09);await sleep(1800);if(my!==token)return;
+      light(victim);tone(210,.4,"sine",.09);await sleep(800);if(my!==token)return;
+      light(keep);tone(150,.6,"sine",.09);await sleep(2000);if(my!==token)return;
+      light(victim);tone(210,.4,"sine",.09);await sleep(700);if(my!==token)return;
+      light(keep);say.textContent="Hold on\u2026";tone(160,.8,"sine",.1);await sleep(1600);if(my!==token)return}
+    else if(n<=8){var decoy=others[rnd(others.length)];light(decoy);say.textContent="\u2026";tone(150,.6,"sine",.09);await sleep(n<=4?1500:1300);if(my!==token)return}
     light(victim);tone(110,.5,"sawtooth",.07);
-    await sleep(fin?1900:n<=3?1600:n>6?450:850);
+    await sleep(fin?2300:n<=3?1800:n<=6?1300:1000);
     if(my!==token)return;
     say.textContent="Not tonight: "+victim.title;
     var v=el(victim);
     v.querySelector(".poster").insertAdjacentHTML("beforeend",'<span class="stamp">NOT<br>TONIGHT</span>');
     v.classList.add("hit");dr.classList.remove("shake");void dr.offsetWidth;dr.classList.add("shake");
-    tone(70,.7,"sawtooth",.1);tone(42,1,"sine",.18);await sleep(750);
+    tone(70,.7,"sawtooth",.1);tone(42,1,"sine",.18);await sleep(800);
     v.classList.remove("hit","lit");v.classList.add("out");light(null);
-    alive.splice(alive.indexOf(victim),1);await sleep(fin?1500:n<=3?1300:n>6?500:850)}
+    alive.splice(alive.indexOf(victim),1);await sleep(fin?1800:n<=3?1500:n<=6?1100:900)}
   if(my!==token)return;
   beat(0);dr.classList.remove("tense","bars2");light(null);
   var w=alive[0];recordWin(w,list.length);
-  dr.classList.add("blackout");tone(90,2,"triangle",.05);
-  await sleep(1900);if(my!==token)return;
+  dr.classList.add("dark");say.innerHTML="<small>The final cut</small>And tonight\u2019s film is\u2026";
+  tone(90,3.4,"triangle",.05);
+  for(var hbt=0;hbt<3;hbt++){if(my!==token)return;tone(58,.2,"sine",.12+hbt*.05);await sleep(330);tone(50,.22,"sine",.1+hbt*.04);await sleep(750)}
+  await sleep(500);if(my!==token)return;
   el(w).classList.add("lit","win");st.classList.add("done");st.style.setProperty("--z",1);
   say.innerHTML="<small>Tonight\u2019s feature presentation</small>"+esc(w.title)+(w.svc?'<small style="margin:10px 0 0">Streaming on '+esc(w.svc.join(", "))+'</small>':"");
-  dr.classList.add("won");
-  await sleep(60);dr.classList.remove("blackout");
+  dr.classList.add("won");dr.classList.remove("dark");
   [523,659,784,1047].forEach(function(f,i){setTimeout(function(){tone(f,1.1,"triangle",.07)},i*150)});
-  for(var sp=0;sp<34;sp++){var pe=document.createElement("div");pe.className="sp";var an=Math.random()*6.283,rr=120+Math.random()*280;pe.style.setProperty("--x",Math.cos(an)*rr+"px");pe.style.setProperty("--y",Math.sin(an)*rr+"px");dr.appendChild(pe);(function(q){setTimeout(function(){q.remove()},1800)})(pe)}
+  for(var sp=0;sp<34;sp++){var pe=document.createElement("div");pe.className="sp";var an=Math.random()*6.283,rr=120+Math.random()*280;pe.style.setProperty("--x",Math.cos(an)*rr+"px");pe.style.setProperty("--y",Math.sin(an)*rr+"px");dr.appendChild(pe);(function(q2){setTimeout(function(){q2.remove()},1800)})(pe)}
   $("dact").innerHTML='<button class="btn" id="again">Draw again</button><button class="btn" id="drop">Remove winner and redraw</button><button class="btn primary" id="seenIt">Mark as watched</button><button class="btn" id="closeDraw">Close</button>';
   if(w.svc)$("seenIt").textContent="Add to my collection";
   $("again").onclick=function(){dropWin();runDraw(ids)};
@@ -693,7 +739,7 @@ async function runDraw(ids){
 }
 $("startDraw").addEventListener("click",function(){if(sel.length>=2)runDraw(sel.slice())});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
-buildListSel();render();
+buildListSel();buildSortSel();render();
 if(tkey&&(Date.now()-stream.at>864e5||!stream.tv))refreshStream(true);
 })();
 </script>
