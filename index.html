@@ -73,7 +73,7 @@ label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
 .c.lit .poster{box-shadow:0 0 0 2px var(--brass),0 0 40px 6px rgba(201,164,92,.6)}
 .c.out{opacity:.1;filter:grayscale(1) blur(1px);transform:scale(.82) rotate(-4deg)}
 .c.hit{animation:hit .6s forwards}
-@keyframes hit{0%{transform:scale(1.14);filter:brightness(1)}15%{transform:scale(1.18) translateX(-7px);filter:brightness(2.4) saturate(2)}35%{transform:scale(1.18) translateX(7px);filter:brightness(1.6) hue-rotate(-30deg)}55%{transform:scale(1.1) translateX(-4px)}100%{transform:scale(.9) rotate(-6deg);filter:grayscale(1) brightness(.5)}}
+@keyframes hit{0%{transform:scale(1.14)}15%{transform:scale(1.18) translateX(-7px)}35%{transform:scale(1.18) translateX(7px)}55%{transform:scale(1.1) translateX(-4px)}100%{transform:scale(.9) rotate(-6deg);filter:grayscale(1) brightness(.5)}}
 .draw.tense{animation:tense 1.2s ease-in-out infinite}
 @keyframes tense{0%,100%{box-shadow:inset 0 0 90px 10px rgba(107,20,32,.0)}50%{box-shadow:inset 0 0 140px 30px rgba(160,24,44,.55)}}
 .cd{position:absolute;z-index:3;font:700 min(42vw,260px)/1 var(--serif);color:var(--brass);opacity:0;pointer-events:none;text-shadow:0 0 60px rgba(201,164,92,.6)}
@@ -117,6 +117,31 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opac
 @keyframes fadeIn{from{opacity:0}}
 @keyframes riseIn{from{opacity:0;transform:translateY(24px) scale(.97)}}
 .row h2{font-size:42px;line-height:1}
+.lbt,.lbb{position:absolute;left:0;right:0;height:0;background:#000;z-index:6;pointer-events:none;transition:height 1.2s cubic-bezier(.2,.8,.2,1)}
+.lbt{top:0}.lbb{bottom:0}
+.draw.bars .lbt,.draw.bars .lbb{height:9vh}
+.draw.bars2 .lbt,.draw.bars2 .lbb{height:14vh}
+.flash{position:absolute;inset:0;z-index:4;pointer-events:none;background:#b4122b;opacity:0}
+.flash.go{animation:flashA .6s ease-out}
+@keyframes flashA{0%{opacity:.7}100%{opacity:0}}
+.draw .stage{transform:scale(var(--z,1));transition:opacity .5s,transform 1.6s ease}
+.draw .say,.draw .dact{transition:opacity .5s}
+.draw.blackout .say,.draw.blackout .stage,.draw.blackout .dact{opacity:0}
+.draw .stage .c.out{filter:grayscale(1) brightness(.4) blur(1px)}
+.draw.shake .stage{animation:shake .5s}
+@keyframes shake{0%,100%{translate:0}20%{translate:-9px 4px}40%{translate:8px -5px}60%{translate:-6px -3px}80%{translate:4px 4px}}
+.rays{position:absolute;width:170vmax;height:170vmax;left:50%;top:44%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;opacity:0;transition:opacity 1.6s;background:repeating-conic-gradient(rgba(201,164,92,.17) 0 6deg,transparent 6deg 18deg);-webkit-mask-image:radial-gradient(circle,#000 0,transparent 52%);mask-image:radial-gradient(circle,#000 0,transparent 52%);animation:spin 45s linear infinite}
+.draw.won .rays{opacity:1}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.leader{position:absolute;z-index:7;width:min(70vw,52vh,400px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;pointer-events:none;opacity:0;background:rgba(0,0,0,.9);box-shadow:inset 0 0 0 12px rgba(0,0,0,.9),inset 0 0 0 14px rgba(242,232,213,.55)}
+.leader.on{opacity:1}
+.leader .ring{position:absolute;inset:6%;border-radius:50%;border:2px solid rgba(242,232,213,.75);background:conic-gradient(rgba(242,232,213,.26) var(--a,0deg),transparent 0)}
+.leader .xh{position:absolute;inset:0;background:linear-gradient(rgba(242,232,213,.7),rgba(242,232,213,.7)) center/100% 2px no-repeat,linear-gradient(rgba(242,232,213,.7),rgba(242,232,213,.7)) center/2px 100% no-repeat}
+.leader b{position:relative;font:700 min(38vw,220px)/1 var(--serif);color:var(--ivory)}
+@keyframes flick2{50%{opacity:.86;transform:translate(1px,-1px)}}
+.stamp{position:absolute;left:50%;top:50%;z-index:4;transform:translate(-50%,-50%) rotate(-16deg);border:2px solid #e8475a;color:#e8475a;background:rgba(0,0,0,.5);padding:2px 6px;font:700 calc(var(--w)/6.6)/1.05 var(--sans);letter-spacing:.08em;text-align:center;animation:stampIn .28s cubic-bezier(.2,1.8,.4,1)}
+@keyframes stampIn{from{transform:translate(-50%,-50%) rotate(-16deg) scale(2.6);opacity:0}}
+.say small{display:block;font:400 12px/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;color:var(--brass);margin:0 0 8px}
 .tray .actions{flex-wrap:wrap;justify-content:flex-end}
 .tabs{display:flex;gap:4px;max-width:1200px;margin:0 auto;padding:6px 24px 0}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);padding:8px 14px;font:600 21px var(--serif)}
@@ -127,7 +152,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opac
 .hero{height:240px;margin:-24px -24px 16px;border-radius:14px 14px 0 0;background-size:cover;background-position:center 20%;position:relative}
 .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,var(--panel))}
 .ov{font-size:14px;color:var(--dim);margin:8px 0 0;max-height:7.5em;overflow:auto}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}.hero2 .bgi,.sheet,.panel{animation:none!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}.hero2 .bgi,.sheet,.panel,.rays,.stamp,.leader b,.draw.shake .stage{animation:none!important}}
 @media(max-width:600px){.row{flex-direction:column}.draw::before,.draw::after{width:5vw}.stage{max-width:84vw}}
 </style>
 </head>
@@ -396,65 +421,81 @@ function rnd(n){return Math.floor(Math.random()*n)}
 var ac=null,snd=true;
 function tone(f,d,t,v){if(!snd||fast)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.type=t||"sine";o.frequency.value=f;g.gain.setValueAtTime(v||.06,ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 $("mute").onclick=function(){snd=!snd;this.textContent=snd?"Sound on":"Sound off"};
+var hb=null;
+function beat(rate){clearInterval(hb);hb=null;if(!rate)return;hb=setInterval(function(){tone(58,.18,"sine",.17);setTimeout(function(){tone(50,.22,"sine",.13)},170)},rate)}
 async function runDraw(ids){
-  var my=++token;fast=false;
-  var dr=$("draw"),say=$("say");
+  var my=++token;fast=false;beat(0);
+  var dr=$("draw"),say=$("say"),st=$("stage");
+  var mk=function(cls,html){var e=dr.querySelector("."+cls);if(!e){e=document.createElement("div");e.className=cls;if(html)e.innerHTML=html;dr.appendChild(e)}return e};
+  mk("lbt");mk("lbb");mk("rays");var ld=mk("leader",'<i class="ring"></i><i class="xh"></i><b></b>');
+  dr.className="draw bars";
   var list=ids.map(function(id){return films.concat(stream.items).filter(function(f){return f.id===id})[0]}).filter(Boolean);
-  var st=$("stage");st.className="stage";dr.classList.remove("tense");
+  st.className="stage";st.style.setProperty("--z",1);
   st.style.setProperty("--w",(list.length<=3?150:list.length<=6?118:92)+"px");
   st.innerHTML=list.map(function(f){return'<div class="c" data-id="'+f.id+'">'+poster(f)+'</div>'}).join("");
-  dr.hidden=false;$("dact").innerHTML='<button class="btn" id="skip">Skip to the end</button>';
-  $("skip").onclick=function(){fast=true};
-  var cd=dr.querySelector(".cd");if(!cd){cd=document.createElement("div");cd.className="cd";dr.appendChild(cd)}
-  var alive=list.slice();var el=function(f){return st.querySelector('[data-id="'+f.id+'"]')};
-  var light=function(f){[].forEach.call(st.querySelectorAll(".lit"),function(x){x.classList.remove("lit")});if(f)el(f).classList.add("lit")};
-  say.textContent="The lights go down";
-  await sleep(1100);
+  say.textContent="";dr.hidden=false;
+  $("dact").innerHTML='<button class="btn" id="skip">Skip to the end</button>';$("skip").onclick=function(){fast=true};
+  var alive=list.slice(),el=function(f){return st.querySelector('[data-id="'+f.id+'"]')};
+  var light=function(f){
+    [].forEach.call(st.querySelectorAll(".lit"),function(x){x.classList.remove("lit")});
+    if(f)el(f).classList.add("lit")};
+  say.innerHTML="<small>Tonight\u2019s</small>Feature Presentation";
+  await sleep(1600);
   for(var c=3;c>0;c--){
     if(my!==token)return;
-    cd.textContent=c;cd.classList.remove("go");void cd.offsetWidth;cd.classList.add("go");
-    tone([0,330,262,196][c],.45,"triangle",.09);await sleep(950)}
+    ld.classList.add("on");ld.querySelector("b").textContent=c;tone([0,330,262,196][c],.4,"triangle",.09);
+    var t0=performance.now(),dur=fast?10:950;
+    await new Promise(function(res){(function f(t){var k=Math.min(1,(t-t0)/dur);ld.style.setProperty("--a",(k*360)+"deg");if(k<1)requestAnimationFrame(f);else res()})(t0)})}
+  ld.classList.remove("on");tone(60,.6,"sawtooth",.08);
   while(alive.length>1){
     if(my!==token)return;
     var n=alive.length,fin=n===2;
-    dr.classList.toggle("tense",n<=3);
+    dr.classList.toggle("tense",n<=3);dr.classList.toggle("bars2",n<=3);
+    st.style.setProperty("--z",n>6?1:n>4?1.05:n>3?1.09:n>2?1.15:1.24);
+    beat(n>6?0:n>4?1150:n>3?950:n>2?780:620);
     say.textContent=fin?"The final two":n+" films left";
-    await sleep(n>6?500:900);
-    var victim=alive[rnd(n)],hops=fin?24:n<=4?16:n<=6?10:7,d=fin?85:70,prev=null;
+    await sleep(n>6?500:1000);
+    var victim=alive[rnd(n)],hops=fin?22:n<=4?15:n<=6?10:7,d=fin?85:70,prev=null;
     for(var i=0;i<hops;i++){
-      var pick=alive[rnd(n)];
-      if(pick===prev)pick=alive[(alive.indexOf(pick)+1)%n];
+      var pick=alive[rnd(n)];if(pick===prev)pick=alive[(alive.indexOf(pick)+1)%n];
       light(pick);prev=pick;tone(300+i*24,.07,"square",.03);
-      await sleep(d);d*=fin?1.13:1.1;
-      if(my!==token)return}
-    if(n<=4){
-      var others=alive.filter(function(x){return x!==victim}),decoy=others[rnd(others.length)];
-      light(decoy);say.textContent="\u2026";tone(150,.6,"sine",.08);await sleep(1300);
-      if(my!==token)return}
+      await sleep(d);d*=fin?1.14:1.1;if(my!==token)return}
+    var others=alive.filter(function(x){return x!==victim});
+    if(fin){
+      var keep=others[0];
+      light(keep);say.textContent="\u2026";tone(150,.6,"sine",.09);await sleep(1500);if(my!==token)return;
+      light(victim);tone(210,.4,"sine",.09);await sleep(650);if(my!==token)return;
+      light(keep);tone(150,.6,"sine",.09);await sleep(1700);if(my!==token)return}
+    else if(n<=4){var decoy=others[rnd(others.length)];light(decoy);say.textContent="\u2026";tone(150,.6,"sine",.09);await sleep(1300);if(my!==token)return}
     light(victim);tone(110,.5,"sawtooth",.07);
-    await sleep(n<=3?1500:n>6?450:800);
+    await sleep(fin?1900:n<=3?1600:n>6?450:850);
+    if(my!==token)return;
     say.textContent="Not tonight: "+victim.title;
-    var v=el(victim);v.classList.add("hit");tone(70,.7,"sawtooth",.1);await sleep(650);
-    v.classList.remove("hit","lit");v.classList.add("out");
-    alive.splice(alive.indexOf(victim),1);await sleep(n<=3?1300:n>6?500:850)}
+    var v=el(victim);
+    v.querySelector(".poster").insertAdjacentHTML("beforeend",'<span class="stamp">NOT<br>TONIGHT</span>');
+    v.classList.add("hit");dr.classList.remove("shake");void dr.offsetWidth;dr.classList.add("shake");
+    tone(70,.7,"sawtooth",.1);tone(42,1,"sine",.18);await sleep(750);
+    v.classList.remove("hit","lit");v.classList.add("out");light(null);
+    alive.splice(alive.indexOf(victim),1);await sleep(fin?1500:n<=3?1300:n>6?500:850)}
   if(my!==token)return;
-  dr.classList.remove("tense");light(null);
+  beat(0);dr.classList.remove("tense","bars2");light(null);
   var w=alive[0];
-  say.textContent="And tonight\u2019s film is\u2026";tone(196,1.4,"triangle",.07);await sleep(2000);
-  if(my!==token)return;
-  el(w).classList.add("lit","win");
-  say.textContent="Tonight we\u2019re watching "+w.title;
-  st.classList.add("done");
-  [523,659,784,1047].forEach(function(f,i){setTimeout(function(){tone(f,1,"triangle",.07)},i*150)});
-  for(var s=0;s<30;s++){var p=document.createElement("div");p.className="sp";var a=Math.random()*6.283,r=120+Math.random()*260;p.style.setProperty("--x",Math.cos(a)*r+"px");p.style.setProperty("--y",Math.sin(a)*r+"px");dr.appendChild(p);(function(q){setTimeout(function(){q.remove()},1800)})(p)}
+  dr.classList.add("blackout");tone(90,2,"triangle",.05);
+  await sleep(1900);if(my!==token)return;
+  el(w).classList.add("lit","win");st.classList.add("done");st.style.setProperty("--z",1);
+  say.innerHTML="<small>Tonight\u2019s feature presentation</small>"+esc(w.title)+(w.svc?'<small style="margin:10px 0 0">Streaming on '+esc(w.svc.join(", "))+'</small>':"");
+  dr.classList.add("won");
+  await sleep(60);dr.classList.remove("blackout");
+  [523,659,784,1047].forEach(function(f,i){setTimeout(function(){tone(f,1.1,"triangle",.07)},i*150)});
+  for(var sp=0;sp<34;sp++){var pe=document.createElement("div");pe.className="sp";var an=Math.random()*6.283,rr=120+Math.random()*280;pe.style.setProperty("--x",Math.cos(an)*rr+"px");pe.style.setProperty("--y",Math.sin(an)*rr+"px");dr.appendChild(pe);(function(q){setTimeout(function(){q.remove()},1800)})(pe)}
   $("dact").innerHTML='<button class="btn" id="again">Draw again</button><button class="btn" id="drop">Remove winner and redraw</button><button class="btn primary" id="seenIt">Mark as watched</button><button class="btn" id="closeDraw">Close</button>';
+  if(w.svc)$("seenIt").textContent="Add to my collection";
   $("again").onclick=function(){runDraw(ids)};
-  $("drop").onclick=function(){var rest=ids.filter(function(x){return x!==w.id});if(rest.length<2){toast("Not enough films left to redraw.");return}runDraw(rest);ids=rest};
-  if(w.svc){say.textContent+=" \u2014 on "+w.svc.join(", ");$("seenIt").textContent="Add to my collection"}
+  $("drop").onclick=function(){var rest=ids.filter(function(x){return x!==w.id});if(rest.length<2){toast("Not enough films left to redraw.");return}ids=rest;runDraw(rest)};
   $("seenIt").onclick=function(){
     if(w.svc){if(owned(w)){toast("Already in your collection.");return}films.push({id:"f"+Date.now(),title:w.title,year:w.year,genre:w.genre,format:"Digital",watched:false,tmdbId:w.tmdbId,poster:w.poster,backdrop:w.backdrop,overview:w.overview});save();toast("Added to your collection.");render();return}
     w.watched=true;save();toast(w.title+" marked as watched.");render()};
-  $("closeDraw").onclick=function(){token++;$("draw").hidden=true;render()};
+  $("closeDraw").onclick=function(){token++;beat(0);dr.hidden=true;dr.className="draw";render()};
 }
 $("startDraw").addEventListener("click",function(){if(sel.length>=2)runDraw(sel.slice())});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
