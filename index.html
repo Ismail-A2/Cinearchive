@@ -166,6 +166,12 @@ details.how a{color:var(--brass)}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
+#res{max-height:min(46vh,380px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:2px}
+.res .rt{flex:1;min-width:0}
+.res .tick{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:14px;color:#1a0d08}
+.res.on .tick{background:var(--brass);border-color:var(--brass)}
+.selinfo{margin-top:10px;font-size:14px;gap:10px;align-items:center;display:flex}
+.selinfo[hidden]{display:none}
 .hero{height:240px;margin:-24px -24px 16px;border-radius:14px 14px 0 0;background-size:cover;background-position:center 20%;position:relative}
 .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,var(--panel))}
 .ov{font-size:14px;color:var(--dim);margin:8px 0 0;max-height:7.5em;overflow:auto}
@@ -205,7 +211,7 @@ details.how a{color:var(--brass)}
 <div class="sheet" id="addSheet" hidden><div class="panel" role="dialog" aria-label="Add film">
   <h2>Add a film</h2>
   <label for="fTitle">Title</label><input id="fTitle" autocomplete="off">
-  <button class="btn" id="srch" style="margin-top:8px">Find on TMDB</button><div id="res"></div>
+  <button class="btn" id="srch" style="margin-top:8px">Find on TMDB</button><div id="res"></div><div class="selinfo" id="selInfo" hidden></div>
   <label for="fYear">Year</label><input id="fYear" inputmode="numeric" maxlength="4">
   <label for="fGenre">Genre</label><input id="fGenre" autocomplete="off">
   <label for="fFormat">Format</label>
@@ -364,15 +370,38 @@ async function tmdb(path,params){
   var r=await fetch(u,long?{headers:{Authorization:"Bearer "+tkey}}:undefined);
   if(!r.ok)throw new Error(r.status===401?"TMDB did not accept that key.":"TMDB request failed.");
   return r.json()}
-$("srch").onclick=async function(){
+var rsAll=[],sPage=1,sMore=false,sel2={};
+function selCount(){return Object.keys(sel2).length}
+function renderRes(){
+  var h=rsAll.map(function(m,i){var on=!!sel2[m.id];return'<button class="res'+(on?" on":"")+'" data-i="'+i+'" aria-pressed="'+on+'">'+(m.poster_path?'<img src="'+IMG+'w92'+m.poster_path+'" alt="">':"<i></i>")+'<span class="rt">'+esc(m.title)+' <span class="meta">'+esc((m.release_date||"").slice(0,4))+'</span></span><b class="tick">'+(on?"\u2713":"")+'</b></button>'}).join("");
+  if(sMore)h+='<button class="btn" id="moreRes" style="width:100%;margin-top:8px">Load more results</button>';
+  $("res").innerHTML=h||'<p class="meta">No matches. You can still save it manually.</p>';
+  var n=selCount();
+  $("selInfo").hidden=!n;
+  $("selInfo").innerHTML=n?'<strong>'+n+' selected</strong><button class="chip" id="selClear">Clear</button>':"";
+  $("saveFilm").textContent=n>1?"Add "+n+(tab==="tv"?" TV shows":" films"):"Save film"}
+async function runSearch(more){
   var t=$("fTitle").value.trim();if(!t){toast("Enter a title first.");return}
-  try{var ep=tab==="tv"?"/search/tv":"/search/movie",pr={query:t,language:"en-GB"};pr[tab==="tv"?"first_air_date_year":"year"]=$("fYear").value.trim();var d=await tmdb(ep,pr);var rs=d.results.slice(0,5).map(norm);
-    $("res").innerHTML=rs.length?rs.map(function(m,i){return'<button class="res" data-i="'+i+'">'+(m.poster_path?'<img src="'+IMG+'w92'+m.poster_path+'" alt="">':"<i></i>")+'<span>'+esc(m.title)+' <span class="meta">'+esc((m.release_date||"").slice(0,4))+'</span>'+(m.media_type==="tv"?' <span class="meta">\u00b7 TV</span>':"")+'</span></button>'}).join(""):'<p class="meta">No matches. You can still save it manually.</p>';
-    $("res").onclick=function(e){var b=e.target.closest(".res");if(!b)return;var m=rs[+b.getAttribute("data-i")];picked=m;
-      [].forEach.call($("res").children,function(x){x.classList.toggle("on",x===b)});
-      $("fTitle").value=m.title;$("fYear").value=(m.release_date||"").slice(0,4);
-      if(!$("fGenre").value&&m.genre_ids&&m.genre_ids.length)$("fGenre").value=GEN[m.genre_ids[0]]||""}
-  }catch(e){toast(e.message)}};
+  try{
+    if(more)sPage++;else{sPage=1;rsAll=[]}
+    var ep=tab==="tv"?"/search/tv":"/search/movie",pr={query:t,language:"en-GB",page:sPage};
+    pr[tab==="tv"?"first_air_date_year":"year"]=$("fYear").value.trim();
+    var d=await tmdb(ep,pr),seen={};rsAll.forEach(function(m){seen[m.id]=1});
+    rsAll=rsAll.concat(d.results.map(norm).filter(function(m){return !seen[m.id]}));
+    sMore=d.page<d.total_pages;renderRes()
+  }catch(e){toast(e.message)}}
+$("srch").onclick=function(){runSearch(false)};
+$("fTitle").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();runSearch(false)}});
+$("res").onclick=function(e){
+  if(e.target.closest("#moreRes")){runSearch(true);return}
+  var b=e.target.closest(".res");if(!b)return;
+  var m=rsAll[+b.getAttribute("data-i")];if(!m)return;
+  if(sel2[m.id])delete sel2[m.id];else sel2[m.id]=m;
+  var keys=Object.keys(sel2);
+  if(keys.length===1){var o=sel2[keys[0]];picked=o;$("fTitle").value=o.title;$("fYear").value=(o.release_date||"").slice(0,4);if(!$("fGenre").value&&o.genre_ids&&o.genre_ids.length)$("fGenre").value=GEN[o.genre_ids[0]]||""}
+  else picked=null;
+  renderRes()};
+$("selInfo").onclick=function(e){if(e.target.id==="selClear"){sel2={};picked=null;renderRes()}};
 $("setBtn").onclick=function(){$("kKey").value=tkey;$("mstat").textContent="";$("bstat").textContent="Saves your collection to a file. Your TMDB key is not included.";$("setSheet").hidden=false};
 $("saveKey").onclick=function(){tkey=$("kKey").value.trim();try{localStorage.setItem("cinearchive:tmdb",tkey)}catch(e){}$("setSheet").hidden=true;toast("Key saved.");render()};
 $("match").onclick=async function(){
@@ -650,8 +679,19 @@ $("shareBtn").onclick=function(){
   else toast(u)};
 showInstallBanner();
 /* add */
-$("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;$("res").innerHTML="";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
+$("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
+  var keys=Object.keys(sel2);
+  if(keys.length>1){
+    var isT2=tab==="tv",fmt=$("fFormat").value,added=0,skipped=0;
+    keys.forEach(function(k){var m=sel2[k],yr=(m.release_date||"").slice(0,4);
+      var dupe=films.some(function(o){return isTV(o)===isT2&&((o.tmdbId&&o.tmdbId===m.id)||(o.title.toLowerCase()===m.title.toLowerCase()&&String(o.year)===yr))});
+      if(dupe){skipped++;return}
+      var nf2={id:"f"+Date.now()+"-"+added,title:m.title,year:yr,genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean),format:fmt,watched:false,kind:isT2?"tv":"film",tmdbId:m.id,poster:m.poster_path,backdrop:m.backdrop_path,overview:m.overview};
+      films.push(nf2);added++;
+      if(isT2&&tkey)tmdb("/tv/"+nf2.tmdbId).then(function(d){nf2.seasons=d.number_of_seasons;save();render()}).catch(function(){})});
+    save();$("addSheet").hidden=true;sel2={};render();
+    toast("Added "+added+(isT2?" TV show":" film")+(added===1?"":"s")+(skipped?". Skipped "+skipped+" already in your collection.":"."));return}
   var t=$("fTitle").value.trim();if(!t){toast("Enter a title first.");return}
   var isT=tab==="tv";var nf={id:"f"+Date.now(),title:t,year:$("fYear").value.trim(),genre:$("fGenre").value.trim(),format:$("fFormat").value,watched:false,kind:isT?"tv":"film"};if(picked&&picked.title===t){nf.tmdbId=picked.id;nf.poster=picked.poster_path;nf.backdrop=picked.backdrop_path;nf.overview=picked.overview;nf.genres=(picked.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean)}films.push(nf);if(nf.kind==="tv"&&nf.tmdbId&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){});
   save();$("addSheet").hidden=true;render()});
