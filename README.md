@@ -30,6 +30,7 @@ The full legal text is in the LICENCE file.
   [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses
   the TMDB API but is not endorsed or certified by TMDB. Each person uses their
   own free TMDB API key, which is stored only on their own device.
+  - Streaming availability data is provided by [JustWatch](https://www.justwatch.com), via TMDB.
 - Fonts are loaded from Google Fonts (Cormorant Garamond and Outfit).
 
 ### No warranty
