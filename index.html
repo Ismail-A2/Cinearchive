@@ -174,9 +174,6 @@ details.how a{color:var(--brass)}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
-.provlist{max-height:220px;overflow-y:auto;overscroll-behavior:contain;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:8px}
-.provlist div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(201,164,92,.1)}
-.provlist .tr{color:var(--brass);flex:none}
 .fchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .fchip{border:1px solid var(--line)}
 .fchip[aria-pressed=true]{background:var(--brass);color:#1a0d08;border-color:var(--brass)}
@@ -216,6 +213,7 @@ details.how a{color:var(--brass)}
 <section class="hero2" id="hero2" hidden></section>
 <div class="bar" id="bar">
   <input id="q" type="search" placeholder="Search your collection" aria-label="Search your collection">
+  <select id="countrySel" aria-label="Country" hidden></select>
   <select id="sortSel" aria-label="Sort"><option value="title">A–Z</option><option value="year">Newest first</option><option value="old">Oldest first</option><option value="added">Recently added</option><option value="unwatched">Unwatched first</option></select>
   <select id="ageSel" aria-label="Age rating"><option value="">Any age rating</option><option value="0">U</option><option value="1">PG</option><option value="2">12 / 12A</option><option value="3">15</option><option value="4">18</option><option value="x">Unrated / unknown</option></select>
   <select id="listSel" aria-label="List"></select><button class="btn" id="listsBtn">Lists</button>
@@ -251,10 +249,6 @@ details.how a{color:var(--brass)}
     <li>Come back here, paste it into the box above, and tap <b>Save key</b>.</li>
     <li>Tap <b>Match posters for my films</b> to add artwork to anything you have already added.</li>
   </ol></details>
-  <label>UK streaming services</label>
-  <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="provBtn">Show TMDB&rsquo;s UK service names</button></div>
-  <input id="provQ" placeholder="Filter the list, for example 5 or brit" autocomplete="off" hidden style="margin-top:8px">
-  <div class="provlist" id="provList" hidden></div>
   <label>Install</label>
   <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="instBtn">Install app</button><button class="btn" id="shareBtn">Share app link</button></div>
   <p class="meta" id="instStat" style="font-size:13px"></p>
@@ -359,7 +353,7 @@ function render(){
   $("nightBtn").setAttribute("aria-pressed",night);
   $("nightBtn").textContent=night?"Cancel Movie Night":"Movie Night";
 }
-function snames(){return SVC.map(function(x){return x[0]})}
+
 function buildChips(){$("chips").innerHTML=(tab==="str"?'<button class="chip" data-k="film" aria-pressed="'+(skind==="film")+'">Films</button><button class="chip" data-k="tv" aria-pressed="'+(skind==="tv")+'">TV shows</button><span class="meta"> | </span>':"")+(tab==="str"?["All"].concat(snames()):FILTERS).map(function(f){return'<button class="chip" data-f="'+f+'" aria-pressed="'+(f===filter)+'">'+esc(f)+'</button>'}).join("")}
 buildChips();
 $("chips").addEventListener("click",function(e){var k=e.target.getAttribute("data-k");if(k){skind=k;filter="All";buildChips();render();return}var f=e.target.getAttribute("data-f");if(!f)return;filter=f;[].forEach.call($("chips").children,function(c){if(c.hasAttribute("data-f"))c.setAttribute("aria-pressed",c.getAttribute("data-f")===f)});render()});
@@ -437,17 +431,27 @@ $("match").onclick=async function(){
   save();render();
   if($("mstat").textContent.indexOf("Matching")===0)$("mstat").textContent="Matched "+n+" of "+todo.length+" films."};
 /* streaming */
-var SVC=[["Netflix",/^netflix$/i,3],["Prime Video",/^amazon prime video$/i,3],["Disney+",/^disney\s*(plus|\+)$/i,3],["Apple TV+",/^apple tv(\s*(plus|\+))?$/i,3],["Now TV",/^now( ?tv)?$/i,3],["Paramount+",/^paramount\s*(plus|\+)$/i],["BBC iPlayer",/^bbc iplayer$/i],["ITVX",/^(itvx|itv hub)$/i],["Channel 4",/^(channel 4|all 4)$/i],["MUBI",/^mubi$/i],["Discovery+",/^discovery\s*(plus|\+)$/i],["Crunchyroll",/^crunchyroll$/i]];
+var SVC=[["Netflix",/^netflix$/i,3],["Prime Video",/^amazon prime video$/i,3],["Disney+",/^disney\s*(plus|\+)$/i,3],["Apple TV+",/^apple tv(\s*(plus|\+))?$/i,3],["Now TV",/^now( ?tv)?$/i,3],["Paramount+",/^paramount\s*(plus|\+)$/i],["BBC iPlayer",/^bbc iplayer$/i],["ITVX",/^(itvx|itv hub)$/i],["Channel 4",/^(channel 4|all 4)$/i],["Channel 5",/^(5|my5|channel 5)$/i],["Acorn TV",/^acorn\s*tv$/i],["MUBI",/^mubi$/i],["Discovery+",/^discovery\s*(plus|\+)$/i],["Crunchyroll",/^crunchyroll$/i]];
+var COUNTRIES=["AR","AU","AT","BE","BR","CA","CL","CO","CZ","DK","EG","FI","FR","DE","GR","HK","HU","IN","ID","IE","IL","IT","JP","KR","MY","MX","NL","NZ","NG","NO","PE","PH","PL","PT","RO","SA","SG","ZA","ES","SE","CH","TW","TH","TR","UA","AE","GB","US"];
+var regionNames=null;try{regionNames=new Intl.DisplayNames(["en"],{type:"region"})}catch(e){}
+function cname(cc){try{return regionNames?regionNames.of(cc):cc}catch(e){return cc}}
+function flag(cc){return String.fromCodePoint.apply(null,cc.split("").map(function(c){return 127397+c.charCodeAt(0)}))}
+function detectCountry(){var l=(navigator.languages&&navigator.languages[0])||navigator.language||"",m=l.match(/[-_]([A-Za-z]{2})$/),c=m?m[1].toUpperCase():"";return COUNTRIES.indexOf(c)>=0?c:"GB"}
+var country=(function(){try{var c=localStorage.getItem("cinearchive:country");if(c)return c;if(localStorage.getItem("cinearchive:stream2"))return"GB"}catch(e){}return detectCountry()})();
+function skey(cc){return cc==="GB"?"cinearchive:stream2":"cinearchive:stream:"+cc}
+function loadStream(cc){try{var v=JSON.parse(localStorage.getItem(skey(cc)));if(v&&v.items)return v}catch(e){}return{at:0,items:[],tv:null,miss:[]}}
+function saveStreamFor(cc,o){try{localStorage.setItem(skey(cc),JSON.stringify(o))}catch(e){}}
+function snames(){return country==="GB"?SVC.map(function(x){return x[0]}):(stream.svcs||[])}
 function sitems(){return skind==="tv"?(stream.tv||[]):stream.items}
 function sall(){return stream.items.concat(stream.tv||[])}
 var stream={at:0,items:[],tv:null,miss:[]},busy=false;
-try{var sv=JSON.parse(localStorage.getItem("cinearchive:stream2"));if(sv&&sv.items)stream=sv}catch(e){}
+stream=loadStream(country);
 function owned(m){return films.some(function(f){return isTV(f)===(m.kind==="tv")&&((f.tmdbId&&f.tmdbId===m.tmdbId)||(f.title.toLowerCase()===m.title.toLowerCase()&&String(f.year)===String(m.year)))})}
 function renderStream(){
   var q=$("q").value.trim().toLowerCase();
   var list=sitems().filter(function(m){return(!q||(m.title+" "+(m.genre||"")).toLowerCase().indexOf(q)>=0)&&(filter==="All"||m.svc.indexOf(filter)>=0)});
   queueCerts(list);if(ageKey)list=list.filter(ageOK);list=sortStream(list);
-  $("count").textContent=stream.at?sitems().length+(skind==="tv"?" TV shows":" films")+" on UK streaming \u00b7 updated "+new Date(stream.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+(stream.miss&&stream.miss.length?" \u00b7 not found: "+stream.miss.join(", "):""):"Streaming shelf not loaded yet";
+  $("count").textContent=stream.at?sitems().length+(skind==="tv"?" TV shows":" films")+" on streaming in "+cname(country)+" \u00b7 updated "+new Date(stream.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+(stream.miss&&stream.miss.length?" \u00b7 not found: "+stream.miss.join(", "):""):"Streaming shelf not loaded yet";
   $("grid").innerHTML=list.map(function(m){var i=sel.indexOf(m.id);return'<button class="card'+(i>=0?" sel":"")+'" data-sid="'+m.id+'" aria-label="'+esc(m.title)+'">'+poster(m,'<span class="badge">'+esc(m.svc[0])+(m.svc.length>1?" +"+(m.svc.length-1):"")+'</span>'+(owned(m)?'<span class="seen">Owned</span>':"")+(m.cert?'<span class="age">'+esc(m.cert)+'</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
   $("empty").hidden=list.length>0;
   $("empty").textContent=sitems().length?"No matches.":"Add your TMDB key in Settings, then tap Refresh streaming.";
@@ -459,35 +463,56 @@ function openStream(id){
   $("detailBody").innerHTML=(m.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(m.backdrop)+')"></div>':"")+'<div class="row">'+poster(m)+'<div><h2>'+esc(m.title)+'</h2><p class="meta">'+esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+'</p><p class="meta">Included with: '+esc(m.svc.join(", "))+'</p>'+(m.overview?'<p class="ov">'+esc(m.overview)+'</p>':"")+'</div></div><div class="foot"><button class="btn" data-close>Close</button>'+(owned(m)?"":'<button class="btn primary" id="sAdd">Add to my collection</button>')+'</div>';
   $("detail").hidden=false;
   if(!owned(m))$("sAdd").onclick=function(){films.push({id:"f"+Date.now(),title:m.title,year:m.year,genre:m.genre,format:"Digital",formats:["Digital"],watched:false,tmdbId:m.tmdbId,poster:m.poster,backdrop:m.backdrop,overview:m.overview,kind:m.kind,genres:m.genres});save();$("detail").hidden=true;render();toast("Added to your collection.")}}
+var pendingRefresh=false;
+function svcsFor(cc,all){
+  if(cc==="GB")return SVC.map(function(x){var ids=[];all.forEach(function(p){if(x[1].test(p.provider_name)&&ids.indexOf(p.provider_id)<0)ids.push(p.provider_id)});return{name:x[0],ids:ids,pages:x[2]||2}});
+  var skip=/(amazon channel|apple tv channel|\bstore\b|google play|youtube|microsoft|vudu|fandango|itunes|rakuten tv|with ads|basic|standard|premium|roku)/i,seen={},list=[];
+  all.forEach(function(p){var pr=p.display_priorities&&p.display_priorities[cc];if(pr===undefined||skip.test(p.provider_name)||seen[p.provider_id])return;seen[p.provider_id]=1;list.push({name:p.provider_name,ids:[p.provider_id],pri:pr,pages:2})});
+  list.sort(function(x,y){return x.pri-y.pri});return list.slice(0,14)}
 async function refreshStream(quiet){
   if(busy)return;
   if(!tkey){if(!quiet)toast("Add your TMDB key in Settings first.");return}
-  busy=true;var by={},byT={},miss=[],oldm={};sall().forEach(function(m){oldm[m.id]=m});
+  busy=true;var cc=country,by={},byT={},miss=[],oldm={};sall().forEach(function(m){oldm[m.id]=m});
   try{
-    var pv=await tmdb("/watch/providers/movie",{watch_region:"GB",language:"en-GB"});
-    var pt=await tmdb("/watch/providers/tv",{watch_region:"GB",language:"en-GB"});
-    var all=pv.results.concat(pt.results);
-    for(var i=0;i<SVC.length;i++){
-      var name=SVC[i][0],re=SVC[i][1],pages=SVC[i][2]||2,ids=[];
-      all.forEach(function(p){if(re.test(p.provider_name)&&ids.indexOf(p.provider_id)<0)ids.push(p.provider_id)});
+    var pv=await tmdb("/watch/providers/movie",{watch_region:cc,language:"en-GB"});
+    var pt=await tmdb("/watch/providers/tv",{watch_region:cc,language:"en-GB"});
+    var svcs=svcsFor(cc,pv.results.concat(pt.results));
+    if(!svcs.length&&!quiet)toast("TMDB has no streaming data for "+cname(cc)+" yet.");
+    for(var i=0;i<svcs.length;i++){
+      var name=svcs[i].name,ids=svcs[i].ids,pages=svcs[i].pages;
       if(!ids.length){miss.push(name);continue}
       for(var kd=0;kd<2;kd++){
         var tvk=kd===1,bag=tvk?byT:by;
         for(var pg=1;pg<=pages;pg++){
-          if(tab==="str")$("count").textContent="Checking "+name+(tvk?" (TV)":"")+"\u2026";
-          var d=await tmdb(tvk?"/discover/tv":"/discover/movie",{watch_region:"GB",with_watch_providers:ids.join("|"),with_watch_monetization_types:"flatrate|free|ads",sort_by:"popularity.desc",language:"en-GB",page:pg});
+          if(tab==="str"&&cc===country)$("count").textContent="Checking "+name+(tvk?" (TV)":"")+"\u2026";
+          var d=await tmdb(tvk?"/discover/tv":"/discover/movie",{watch_region:cc,with_watch_providers:ids.join("|"),with_watch_monetization_types:"flatrate|free|ads",sort_by:"popularity.desc",language:"en-GB",page:pg});
           d.results.forEach(function(m){norm(m);var k=(tvk?"v":"t")+m.id;var o=bag[k]||(bag[k]={id:k,tmdbId:m.id,kind:tvk?"tv":"film",title:m.title,year:(m.release_date||"").slice(0,4),genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(x){return GEN[x]}).filter(Boolean),poster:m.poster_path,backdrop:m.backdrop_path,overview:(m.overview||"").slice(0,240),svc:[],pop:m.popularity});if(o.svc.indexOf(name)<0)o.svc.push(name)})}}}
     var fin=function(b){return Object.keys(b).map(function(k){return b[k]}).filter(function(m){return m.poster}).map(function(m){var o=oldm[m.id];if(o&&o.det){m.cert=o.cert;m.runtime=o.runtime;m.det=1;if(o.seasons)m.seasons=o.seasons}return m}).sort(function(a,b){return b.pop-a.pop}).slice(0,450)};
-    stream={at:Date.now(),miss:miss,items:fin(by),tv:fin(byT)};saveStream();
-    if(!quiet)toast(miss.length?"Not found for UK: "+miss.join(", "):"Streaming shelf updated.")
+    var ns={at:Date.now(),miss:miss,items:fin(by),tv:fin(byT),n:SVC.length,svcs:svcs.filter(function(x){return x.ids.length}).map(function(x){return x.name})};
+    saveStreamFor(cc,ns);if(cc===country)stream=ns;
+    if(!quiet&&svcs.length)toast(miss.length?"Not found in "+cname(cc)+": "+miss.join(", "):"Streaming shelf updated for "+cname(cc)+".")
   }catch(e){if(!quiet)toast(e.message)}
-  busy=false;render()}
+  busy=false;
+  if(pendingRefresh){pendingRefresh=false;buildChips();render();refreshStream(false);return}
+  buildChips();render()}
+function buildCountrySel(){
+  var l=COUNTRIES.slice().sort(function(a,b){return cname(a).localeCompare(cname(b))});
+  $("countrySel").innerHTML=l.map(function(c){return'<option value="'+c+'">'+flag(c)+" "+esc(cname(c))+'</option>'}).join("");
+  $("countrySel").value=country}
+function setCountry(cc){
+  if(cc===country)return;
+  country=cc;try{localStorage.setItem("cinearchive:country",cc)}catch(e){}
+  stream=loadStream(cc);filter="All";sel=sel.filter(function(id){return !/^[tv]\d/.test(id)});
+  buildChips();render();
+  if(tkey&&(!stream.at||Date.now()-stream.at>864e5)){if(busy)pendingRefresh=true;else refreshStream(false)}}
+$("countrySel").onchange=function(){setCountry(this.value)};
+buildCountrySel();
 $("refBtn").onclick=function(){refreshStream(false)};
 $("tabs").onclick=function(e){
   var t=e.target.getAttribute("data-t");if(!t||t===tab)return;
   tab=t;del=false;filter="All";if(!night)sel=[];
   [].forEach.call($("tabs").children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-t")===t)});
-  $("addBtn").hidden=$("delBtn").hidden=(t==="str"||t==="his");$("addBtn").textContent=t==="tv"?"Add TV show":"Add film";$("nightBtn").hidden=(t==="his");$("refBtn").hidden=t!=="str";$("bar").hidden=t==="his";$("sortSel").hidden=$("ageSel").hidden=(t==="his");$("listSel").hidden=$("listsBtn").hidden=(t!=="lib"&&t!=="tv");if(t==="his"){night=false;sel=[]}
+  $("addBtn").hidden=$("delBtn").hidden=(t==="str"||t==="his");$("addBtn").textContent=t==="tv"?"Add TV show":"Add film";$("nightBtn").hidden=(t==="his");$("refBtn").hidden=t!=="str";$("bar").hidden=t==="his";$("sortSel").hidden=$("ageSel").hidden=(t==="his");$("countrySel").hidden=(t!=="str");$("listSel").hidden=$("listsBtn").hidden=(t!=="lib"&&t!=="tv");if(t==="his"){night=false;sel=[]}
   $("empty").textContent=t==="tv"?"No TV shows yet. Tap Add TV show to start your collection.":"No films match. Try another search or add a film.";
   buildChips();buildSortSel();render()};
 /* backup */
@@ -519,7 +544,7 @@ function extras(){
   $("kb").hidden=!!tkey;
   if(tab==="his"){$("hero2").hidden=true;$("rails").innerHTML="";$("gridTitle").textContent="Movie Night history";return}
   var q=$("q").value.trim(),def=!q&&filter==="All"&&!night&&!del&&!listId&&sortKey==="title"&&!ageKey,hero=$("hero2");
-  $("gridTitle").textContent=tab==="str"?(skind==="tv"?"Popular TV shows on UK streaming":"Popular films on UK streaming"):(def?(tab==="tv"?"All TV shows":"All films"):(q||filter!=="All"||listId||ageKey?"Results":"All films"));
+  $("gridTitle").textContent=tab==="str"?(skind==="tv"?"Popular TV shows in "+cname(country):"Popular films in "+cname(country)):(def?(tab==="tv"?"All TV shows":"All films"):(q||filter!=="All"||listId||ageKey?"Results":"All films"));
   var base=tab==="str"?sitems():films.filter(function(f){return isTV(f)===(tab==="tv")}),pool=base.filter(function(m){return m.backdrop});
   if(!def||!pool.length){hero.hidden=true;hero.innerHTML="";hero.removeAttribute("data-k")}
   else{
@@ -527,7 +552,7 @@ function extras(){
     if(hero.getAttribute("data-k")!==k){
       hero.setAttribute("data-k",k);
       var meta=esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+(tab==="str"?" \u00b7 "+esc(m.svc.join(", ")):" \u00b7 "+esc(fmts(m).join(", ")));
-      hero.innerHTML='<div class="bgi" style="background-image:url('+IMG+'w1280'+esc(m.backdrop)+')"></div><div class="txt"><div class="eyebrow">'+(tab==="str"?"Streaming in the UK":"From your archive")+'</div><h2>'+esc(m.title)+'</h2><div class="meta">'+meta+'</div>'+(m.overview?'<p>'+esc(m.overview)+'</p>':"")+'<button class="btn primary hbtn" data-id="'+m.id+'" data-s="'+(tab==="str"?"1":"")+'">View film</button></div>'}
+      hero.innerHTML='<div class="bgi" style="background-image:url('+IMG+'w1280'+esc(m.backdrop)+')"></div><div class="txt"><div class="eyebrow">'+(tab==="str"?"Streaming in "+cname(country):"From your archive")+'</div><h2>'+esc(m.title)+'</h2><div class="meta">'+meta+'</div>'+(m.overview?'<p>'+esc(m.overview)+'</p>':"")+'<button class="btn primary hbtn" data-id="'+m.id+'" data-s="'+(tab==="str"?"1":"")+'">View film</button></div>'}
     hero.hidden=false}
   var rails=$("rails");
   if((tab==="lib"||tab==="tv")&&def&&base.length>=8){
@@ -541,7 +566,7 @@ try{lists=JSON.parse(localStorage.getItem("cinearchive:lists"))||[]}catch(e){}
 try{hist=JSON.parse(localStorage.getItem("cinearchive:history"))||[]}catch(e){}
 function saveLists(){try{localStorage.setItem("cinearchive:lists",JSON.stringify(lists))}catch(e){}}
 function saveHist(){try{localStorage.setItem("cinearchive:history",JSON.stringify(hist))}catch(e){}}
-function saveStream(){try{localStorage.setItem("cinearchive:stream2",JSON.stringify(stream))}catch(e){}}
+function saveStream(){saveStreamFor(country,stream)}
 function recordWin(w,n){var id="h"+Date.now();hist.push({id:id,at:Date.now(),filmId:w.id,title:w.title,year:w.year,poster:w.poster,n:n});saveHist();lastHist=id}
 function dropWin(){if(!lastHist)return;hist=hist.filter(function(h){return h.id!==lastHist});lastHist=null;saveHist()}
 function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
@@ -713,23 +738,6 @@ function toggleFm(arr,b){var x=b.getAttribute("data-x"),i=arr.indexOf(x);if(i>=0
 $("fFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(addFm,b);drawFchips("fFormats",addFm)};
 $("eFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(editFm,b);drawFchips("eFormats",editFm)};
 drawFchips("fFormats",addFm);
-/* provider name viewer */
-var provAll=null;
-function drawProv(){
-  var q=$("provQ").value.trim().toLowerCase(),used=function(n){return SVC.some(function(x){return x[1].test(n)})};
-  var l=provAll.filter(function(p){return !q||p.name.toLowerCase().indexOf(q)>=0});
-  $("provList").innerHTML=l.length?l.map(function(p){return'<div><span>'+esc(p.name)+' <span class="meta">#'+p.id+'</span></span>'+(used(p.name)?'<span class="tr">tracked</span>':"")+'</div>'}).join(""):'<div>No service matches that.</div>'}
-$("provBtn").onclick=async function(){
-  if(!tkey){toast("Add your TMDB key first.");return}
-  this.disabled=true;
-  try{
-    var a=await tmdb("/watch/providers/movie",{watch_region:"GB",language:"en-GB"}),b=await tmdb("/watch/providers/tv",{watch_region:"GB",language:"en-GB"}),m={};
-    a.results.concat(b.results).forEach(function(p){m[p.provider_id]=p.provider_name});
-    provAll=Object.keys(m).map(function(id){return{id:id,name:m[id]}}).sort(function(x,y){return x.name.localeCompare(y.name)});
-    $("provQ").hidden=false;$("provList").hidden=false;drawProv()
-  }catch(e){toast(e.message)}
-  this.disabled=false};
-$("provQ").addEventListener("input",function(){if(provAll)drawProv()});
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;addFm=["Blu-ray"];drawFchips("fFormats",addFm);sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
@@ -873,7 +881,7 @@ async function runDraw(ids){
 $("startDraw").addEventListener("click",function(){if(sel.length>=2)runDraw(sel.slice())});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
 buildListSel();buildSortSel();render();
-if(tkey&&(Date.now()-stream.at>864e5||!stream.tv))refreshStream(true);
+if(tkey&&(Date.now()-stream.at>864e5||!stream.tv||stream.n!==SVC.length))refreshStream(true);
 })();
 </script>
 </body>
