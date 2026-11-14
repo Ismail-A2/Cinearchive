@@ -167,13 +167,18 @@ details.how a{color:var(--brass)}
 .dock .actions{justify-content:flex-end}
 .dock .btn{padding:8px 14px;font-size:14px}
 .dock .tabs button,.dock .btn{white-space:nowrap;flex:none}
-@media(max-width:640px){.dock{padding:4px 10px;border-radius:16px;gap:2px}.dock .tabs,.dock .actions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;justify-content:flex-start}.dock .tabs::-webkit-scrollbar,.dock .actions::-webkit-scrollbar{display:none}.dock .tabs button{padding:5px 8px;font-size:14px}.dock .tabs{gap:2px}.dock .btn{padding:7px 10px;font-size:12.5px}.dock .actions{gap:6px}}
+.tabs .sm{display:none}
+@media(max-width:640px){.tabs .lg{display:none}.tabs .sm{display:inline}}
+@media(max-width:640px){.dock{padding:4px 10px;border-radius:16px;gap:2px}.dock .tabs,.dock .actions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;justify-content:flex-start}.dock .tabs::-webkit-scrollbar,.dock .actions::-webkit-scrollbar{display:none}.dock .tabs button{padding:5px 6px;font-size:13px}.dock .tabs{gap:2px}.dock .btn{padding:7px 10px;font-size:12.5px}.dock .actions{gap:6px}}
 .tabs{display:flex;gap:4px;max-width:1200px;margin:0 auto;padding:6px 24px 0}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);padding:8px 14px;font:600 21px var(--serif)}
 .tabs button[aria-pressed=true]{color:var(--ivory);border-color:var(--brass)}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
+button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.railt span{color:var(--brass)}
+.sec{scroll-margin-top:110px}
 .fchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .fchip{border:1px solid var(--line)}
 .fchip[aria-pressed=true]{background:var(--brass);color:#1a0d08;border-color:var(--brass)}
@@ -199,7 +204,7 @@ details.how a{color:var(--brass)}
   <div><h1>Your CineArchive</h1><div class="sub" id="count"></div></div>
 </header>
 <div class="dock" id="dock">
-<div class="tabs" id="tabs"><button data-t="lib" aria-pressed="true">My collection</button><button data-t="tv" aria-pressed="false">TV shows</button><button data-t="str" aria-pressed="false">On streaming</button><button data-t="his" aria-pressed="false">History</button></div>
+<div class="tabs" id="tabs"><button data-t="lib" aria-pressed="true"><span class="lg">My collection</span><span class="sm">Collection</span></button><button data-t="tv" aria-pressed="false"><span class="lg">TV shows</span><span class="sm">TV</span></button><button data-t="str" aria-pressed="false"><span class="lg">On streaming</span><span class="sm">Streaming</span></button><button data-t="dis" aria-pressed="false">Discover</button><button data-t="his" aria-pressed="false">History</button></div>
   <div class="actions">
     <button class="btn" id="addBtn">Add film</button>
     <button class="btn" id="refBtn" hidden>Refresh streaming</button>
@@ -219,7 +224,7 @@ details.how a{color:var(--brass)}
   <select id="listSel" aria-label="List"></select><button class="btn" id="listsBtn">Lists</button>
   <span id="chips"></span>
 </div>
-<main><div id="rails"></div><h3 class="sec" id="gridTitle"></h3><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>No films match. Try another search or add a film.</div></main>
+<main><div id="rails"></div><h3 class="sec" id="gridTitle"></h3><button class="chip" id="gClear" hidden style="border:1px solid var(--line);margin:0 0 14px">Show all</button><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>No films match. Try another search or add a film.</div></main>
 
 <div class="tray" id="tray" hidden>
   <div><strong id="trayN">0</strong><span id="trayOf"> of 30 chosen</span><div class="sub" id="traySub">Pick 2 to 30 films, then start the draw.</div></div>
@@ -318,13 +323,14 @@ function hue(t){var h=0;for(var i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))%360;
 function bg(t){var h=hue(t);return"linear-gradient(160deg,hsl("+h+",42%,30%),hsl("+((h+45)%360)+",48%,11%))"}
 var IMG="https://image.tmdb.org/t/p/";
 function poster(f,extra){var im=f.poster?'<img src="'+IMG+'w342'+esc(f.poster)+'" alt="" loading="lazy">':"";return'<div class="poster'+(im?" img":"")+'" style="background:'+bg(f.title)+'">'+im+(extra||"")+'<div class="pt">'+esc(f.title)+'</div><div class="py">'+esc(f.year||"")+(f.genre?" \u00b7 "+esc(f.genre):"")+'</div></div>'}
-var filter="All",night=false,sel=[],tab="lib",del=false,listId="",sortKey="title",skind="film";
+var filter="All",night=false,sel=[],tab="lib",del=false,listId="",sortKey="title",skind="film",genreKey="";
 var FILTERS=["All","Physical","Digital","Unwatched"];
 function render(){
-  extras();if(tab==="str"){renderStream();return}if(tab==="his"){renderHistory();return}
+  extras();if(tab==="str"){renderStream();return}if(tab==="his"){renderHistory();return}if(tab==="dis"){renderDiscover();return}
   var q=$("q").value.trim().toLowerCase();
   var list=films.filter(function(f){
     if(isTV(f)!==(tab==="tv"))return false;
+    if(genreKey&&gl(f).indexOf(genreKey)<0)return false;
     if(q&&(f.title+" "+(f.genre||"")+" "+(f.year||"")).toLowerCase().indexOf(q)<0)return false;
     if(filter==="Physical")return fmts(f).some(function(x){return x!=="Digital"});
     if(filter==="Digital")return fmts(f).indexOf("Digital")>=0;
@@ -354,9 +360,12 @@ function render(){
   $("nightBtn").textContent=night?"Cancel Movie Night":"Movie Night";
 }
 
-function buildChips(){$("chips").innerHTML=(tab==="str"?'<button class="chip" data-k="film" aria-pressed="'+(skind==="film")+'">Films</button><button class="chip" data-k="tv" aria-pressed="'+(skind==="tv")+'">TV shows</button><span class="meta"> | </span>':"")+(tab==="str"?["All"].concat(snames()):FILTERS).map(function(f){return'<button class="chip" data-f="'+f+'" aria-pressed="'+(f===filter)+'">'+esc(f)+'</button>'}).join("")}
+function buildChips(){
+  var kc='<button class="chip" data-k="film" aria-pressed="'+(skind==="film")+'">Films</button><button class="chip" data-k="tv" aria-pressed="'+(skind==="tv")+'">TV shows</button>';
+  if(tab==="dis"){$("chips").innerHTML=kc;return}
+  $("chips").innerHTML=(tab==="str"?kc+'<span class="meta"> | </span>':"")+(tab==="str"?["All"].concat(snames()):FILTERS).map(function(f){return'<button class="chip" data-f="'+f+'" aria-pressed="'+(f===filter)+'">'+esc(f)+'</button>'}).join("")}
 buildChips();
-$("chips").addEventListener("click",function(e){var k=e.target.getAttribute("data-k");if(k){skind=k;filter="All";buildChips();render();return}var f=e.target.getAttribute("data-f");if(!f)return;filter=f;[].forEach.call($("chips").children,function(c){if(c.hasAttribute("data-f"))c.setAttribute("aria-pressed",c.getAttribute("data-f")===f)});render()});
+$("chips").addEventListener("click",function(e){var k=e.target.getAttribute("data-k");if(k){skind=k;filter="All";genreKey="";buildChips();render();return}var f=e.target.getAttribute("data-f");if(!f)return;filter=f;[].forEach.call($("chips").children,function(c){if(c.hasAttribute("data-f"))c.setAttribute("aria-pressed",c.getAttribute("data-f")===f)});render()});
 $("q").addEventListener("input",render);
 function toast(m){var t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2200)}
 var gridClick=function(e){
@@ -449,7 +458,7 @@ stream=loadStream(country);
 function owned(m){return films.some(function(f){return isTV(f)===(m.kind==="tv")&&((f.tmdbId&&f.tmdbId===m.tmdbId)||(f.title.toLowerCase()===m.title.toLowerCase()&&String(f.year)===String(m.year)))})}
 function renderStream(){
   var q=$("q").value.trim().toLowerCase();
-  var list=sitems().filter(function(m){return(!q||(m.title+" "+(m.genre||"")).toLowerCase().indexOf(q)>=0)&&(filter==="All"||m.svc.indexOf(filter)>=0)});
+  var list=sitems().filter(function(m){return(!q||(m.title+" "+(m.genre||"")).toLowerCase().indexOf(q)>=0)&&(filter==="All"||m.svc.indexOf(filter)>=0)&&(!genreKey||gl(m).indexOf(genreKey)>=0)});
   queueCerts(list);if(ageKey)list=list.filter(ageOK);list=sortStream(list);
   $("count").textContent=stream.at?sitems().length+(skind==="tv"?" TV shows":" films")+" on streaming in "+cname(country)+" \u00b7 updated "+new Date(stream.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+(stream.miss&&stream.miss.length?" \u00b7 not found: "+stream.miss.join(", "):""):"Streaming shelf not loaded yet";
   $("grid").innerHTML=list.map(function(m){var i=sel.indexOf(m.id);return'<button class="card'+(i>=0?" sel":"")+'" data-sid="'+m.id+'" aria-label="'+esc(m.title)+'">'+poster(m,'<span class="badge">'+esc(m.svc[0])+(m.svc.length>1?" +"+(m.svc.length-1):"")+'</span>'+(owned(m)?'<span class="seen">Owned</span>':"")+(m.cert?'<span class="age">'+esc(m.cert)+'</span>':"")+(i>=0?'<span class="num">'+(i+1)+'</span>':""))+'</button>'}).join("");
@@ -502,19 +511,20 @@ function buildCountrySel(){
 function setCountry(cc){
   if(cc===country)return;
   country=cc;try{localStorage.setItem("cinearchive:country",cc)}catch(e){}
-  stream=loadStream(cc);filter="All";sel=sel.filter(function(id){return !/^[tv]\d/.test(id)});
+  stream=loadStream(cc);filter="All";genreKey="";sel=sel.filter(function(id){return !/^[tv]\d/.test(id)});
   buildChips();render();
-  if(tkey&&(!stream.at||Date.now()-stream.at>864e5)){if(busy)pendingRefresh=true;else refreshStream(false)}}
+  if(tab==="str"&&tkey&&(!stream.at||Date.now()-stream.at>864e5)){if(busy)pendingRefresh=true;else refreshStream(false)}}
 $("countrySel").onchange=function(){setCountry(this.value)};
 buildCountrySel();
-$("refBtn").onclick=function(){refreshStream(false)};
+$("refBtn").onclick=function(){if(tab==="dis")loadDiscover(true);else refreshStream(false)};
 $("tabs").onclick=function(e){
-  var t=e.target.getAttribute("data-t");if(!t||t===tab)return;
-  tab=t;del=false;filter="All";if(!night)sel=[];
+  var tb=e.target.closest("[data-t]"),t=tb&&tb.getAttribute("data-t");if(!t||t===tab)return;
+  tab=t;del=false;filter="All";genreKey="";if(!night)sel=[];
   [].forEach.call($("tabs").children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-t")===t)});
-  $("addBtn").hidden=$("delBtn").hidden=(t==="str"||t==="his");$("addBtn").textContent=t==="tv"?"Add TV show":"Add film";$("nightBtn").hidden=(t==="his");$("refBtn").hidden=t!=="str";$("bar").hidden=t==="his";$("sortSel").hidden=$("ageSel").hidden=(t==="his");$("countrySel").hidden=(t!=="str");$("listSel").hidden=$("listsBtn").hidden=(t!=="lib"&&t!=="tv");if(t==="his"){night=false;sel=[]}
+  $("addBtn").hidden=$("delBtn").hidden=(t==="str"||t==="his"||t==="dis");$("addBtn").textContent=t==="tv"?"Add TV show":"Add film";$("nightBtn").hidden=(t==="his"||t==="dis");$("refBtn").hidden=(t!=="str"&&t!=="dis");$("refBtn").textContent=t==="dis"?"Refresh lists":"Refresh streaming";$("bar").hidden=t==="his";$("q").hidden=(t==="dis");$("sortSel").hidden=$("ageSel").hidden=(t==="his"||t==="dis");$("countrySel").hidden=(t!=="str"&&t!=="dis");$("listSel").hidden=$("listsBtn").hidden=(t!=="lib"&&t!=="tv");if(t==="his"){night=false;sel=[]}
   $("empty").textContent=t==="tv"?"No TV shows yet. Tap Add TV show to start your collection.":"No films match. Try another search or add a film.";
-  buildChips();buildSortSel();render()};
+  buildChips();buildSortSel();render();
+  if(t==="str"&&tkey&&!busy&&(!stream.at||Date.now()-stream.at>864e5))refreshStream(true)};
 /* backup */
 $("expBtn").onclick=async function(){
   var data=JSON.stringify({app:"your-cinearchive",version:1,exported:new Date().toISOString(),films:films,lists:lists,history:hist},null,1);
@@ -542,9 +552,10 @@ $("impFile").onchange=function(){
 /* cinematic extras */
 function extras(){
   $("kb").hidden=!!tkey;
-  if(tab==="his"){$("hero2").hidden=true;$("rails").innerHTML="";$("gridTitle").textContent="Movie Night history";return}
-  var q=$("q").value.trim(),def=!q&&filter==="All"&&!night&&!del&&!listId&&sortKey==="title"&&!ageKey,hero=$("hero2");
-  $("gridTitle").textContent=tab==="str"?(skind==="tv"?"Popular TV shows in "+cname(country):"Popular films in "+cname(country)):(def?(tab==="tv"?"All TV shows":"All films"):(q||filter!=="All"||listId||ageKey?"Results":"All films"));
+  $("gClear").hidden=!genreKey||tab==="his";
+  if(tab==="his"||tab==="dis"){$("hero2").hidden=true;if(tab==="his")$("rails").innerHTML="";$("gridTitle").textContent=tab==="his"?"Movie Night history":"";return}
+  var q=$("q").value.trim(),def=!q&&filter==="All"&&!night&&!del&&!listId&&(tab==="str"?ssort==="pop":sortKey==="title")&&!ageKey&&!genreKey,hero=$("hero2");
+  $("gridTitle").textContent=genreKey?genreKey+((tab==="tv"||(tab==="str"&&skind==="tv"))?" series":" films"):tab==="str"?(skind==="tv"?"Popular TV shows in "+cname(country):"Popular films in "+cname(country)):(def?(tab==="tv"?"All TV shows":"All films"):(q||filter!=="All"||listId||ageKey?"Results":"All films"));
   var base=tab==="str"?sitems():films.filter(function(f){return isTV(f)===(tab==="tv")}),pool=base.filter(function(m){return m.backdrop});
   if(!def||!pool.length){hero.hidden=true;hero.innerHTML="";hero.removeAttribute("data-k")}
   else{
@@ -555,9 +566,20 @@ function extras(){
       hero.innerHTML='<div class="bgi" style="background-image:url('+IMG+'w1280'+esc(m.backdrop)+')"></div><div class="txt"><div class="eyebrow">'+(tab==="str"?"Streaming in "+cname(country):"From your archive")+'</div><h2>'+esc(m.title)+'</h2><div class="meta">'+meta+'</div>'+(m.overview?'<p>'+esc(m.overview)+'</p>':"")+'<button class="btn primary hbtn" data-id="'+m.id+'" data-s="'+(tab==="str"?"1":"")+'">View film</button></div>'}
     hero.hidden=false}
   var rails=$("rails");
-  if((tab==="lib"||tab==="tv")&&def&&base.length>=8){
-    var rail=function(t,list){return list.length?'<div class="rail"><h3>'+t+'</h3><div class="row2">'+list.map(function(f){return'<button class="card" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,fmtBadges(f)+(f.watched?'<span class="seen">Seen</span>':""))+'</button>'}).join("")+'</div></div>':""};
-    rails.innerHTML=rail("Recently added",base.slice(-12).reverse())+rail("Not yet watched",base.filter(function(f){return !f.watched}).slice(0,12))}
+  if(def&&(((tab==="lib"||tab==="tv")&&base.length>=8)||(tab==="str"&&base.length>=12))){
+    var strm=tab==="str",tvish=(tab==="tv"||(strm&&skind==="tv"));
+    var card=function(f){return strm?'<button class="card" data-sid="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,'<span class="badge">'+esc(f.svc[0])+(f.svc.length>1?" +"+(f.svc.length-1):"")+'</span>'+(owned(f)?'<span class="seen">Owned</span>':"")+(f.cert?'<span class="age">'+esc(f.cert)+'</span>':""))+'</button>':'<button class="card" data-id="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,fmtBadges(f)+(f.watched?'<span class="seen">Seen</span>':"")+(f.cert?'<span class="age">'+esc(f.cert)+'</span>':""))+'</button>'};
+    var rail=function(t,list,g){return list.length?'<div class="rail"><h3>'+(g?'<button class="railt" data-g="'+esc(g)+'">'+esc(t)+' <span>\u203a</span></button>':esc(t))+'</h3><div class="row2">'+list.slice(0,12).map(card).join("")+'</div></div>':""};
+    var html="";
+    if(!strm)html+=rail("Recently added",base.slice(-12).reverse())+rail("Not yet watched",base.filter(function(f){return !f.watched}));
+    var cnt={},min=strm?5:4;
+    base.forEach(function(f){gl(f).forEach(function(g){(cnt[g]=cnt[g]||[]).push(f)})});
+    Object.keys(cnt).filter(function(g){return cnt[g].length>=min}).sort(function(x,y){return cnt[y].length-cnt[x].length}).slice(0,strm?8:6).forEach(function(g){
+      var l=cnt[g].slice();if(!strm)l.sort(function(x,y){return(+y.year||0)-(+x.year||0)});
+      html+=rail(g+(tvish?" series":" films"),l,g)});
+    if(!strm){var dec={};base.forEach(function(f){var y=+f.year;if(y>=1900){var k=Math.floor(y/10)*10;(dec[k]=dec[k]||[]).push(f)}});
+      Object.keys(dec).filter(function(k){return dec[k].length>=min}).sort(function(x,y){return dec[y].length-dec[x].length}).slice(0,2).sort().forEach(function(k){html+=rail(k+"s",dec[k].slice().sort(function(x,y){return(+y.year||0)-(+x.year||0)}))})}
+    rails.innerHTML=html}
   else rails.innerHTML=""}
 $("hero2").addEventListener("click",function(e){var b=e.target.closest(".hbtn");if(!b)return;var id=b.getAttribute("data-id");if(b.getAttribute("data-s"))openStream(id);else openDetail(id)});
 /* lists, history, edit, auto-pick */
@@ -738,6 +760,49 @@ function toggleFm(arr,b){var x=b.getAttribute("data-x"),i=arr.indexOf(x);if(i>=0
 $("fFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(addFm,b);drawFchips("fFormats",addFm)};
 $("eFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(editFm,b);drawFchips("eFormats",editFm)};
 drawFchips("fFormats",addFm);
+/* genre rails */
+$("gClear").onclick=function(){genreKey="";render()};
+$("rails").addEventListener("click",function(e){var t=e.target.closest(".railt");if(!t)return;genreKey=t.getAttribute("data-g");render();$("gridTitle").scrollIntoView({behavior:"smooth",block:"start"})});
+/* discover: TMDB trending / popular / top rated lists */
+var DLISTS={film:[["Trending this week","/trending/movie/week"],["Popular right now","/movie/popular"],["Top rated of all time","/movie/top_rated"],["In cinemas now","/movie/now_playing"],["Coming soon","/movie/upcoming"]],tv:[["Trending this week","/trending/tv/week"],["Popular right now","/tv/popular"],["Top rated of all time","/tv/top_rated"],["On air now","/tv/on_the_air"]]};
+var discBusy=false,dscFm=["Blu-ray"];
+function dkey(cc,kd){return"cinearchive:disc:"+cc+":"+kd}
+function loadDiscCache(){try{var v=JSON.parse(localStorage.getItem(dkey(country,skind)));return v&&v.lists?v:null}catch(e){return null}}
+async function loadDiscover(force){
+  var cc=country,kd=skind,c=loadDiscCache();
+  if(!force&&c&&Date.now()-c.at<216e5)return;
+  if(!tkey){toast("Add your TMDB key in Settings first.");return}
+  if(discBusy)return;discBusy=true;
+  try{
+    var lists=[];
+    for(var i=0;i<DLISTS[kd].length;i++){
+      if(tab==="dis")$("count").textContent="Loading "+DLISTS[kd][i][0].toLowerCase()+"\u2026";
+      var d=await tmdb(DLISTS[kd][i][1],{language:"en-GB",region:cc,page:1});
+      lists.push({title:DLISTS[kd][i][0],items:d.results.filter(function(m){return m.poster_path}).slice(0,20).map(function(m){norm(m);return{id:"d"+m.id,tmdbId:m.id,kind:kd==="tv"?"tv":"film",title:m.title,year:(m.release_date||"").slice(0,4),genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(x){return GEN[x]}).filter(Boolean),poster:m.poster_path,backdrop:m.backdrop_path,overview:m.overview||"",vote:m.vote_average||0}})})}
+    try{localStorage.setItem(dkey(cc,kd),JSON.stringify({at:Date.now(),lists:lists}))}catch(e){}
+  }catch(e){toast(e.message)}
+  discBusy=false;if(tab==="dis")render()}
+function renderDiscover(){
+  var c=loadDiscCache();
+  $("tray").hidden=true;$("grid").innerHTML="";$("empty").hidden=true;
+  $("count").textContent="Discover "+(skind==="tv"?"TV shows":"films")+" \u00b7 "+cname(country);
+  if(!tkey){$("rails").innerHTML='<p class="meta" style="padding:30px 0">Add your TMDB key in Settings to see trending, popular and top-rated lists.</p>';return}
+  if(!c){$("rails").innerHTML='<p class="meta" style="padding:30px 0">Loading lists\u2026</p>';loadDiscover(false);return}
+  $("rails").innerHTML=c.lists.map(function(l){return l.items.length?'<div class="rail"><h3>'+esc(l.title)+'</h3><div class="row2">'+l.items.map(function(f){return'<button class="card" data-did="'+f.id+'" aria-label="'+esc(f.title)+'">'+poster(f,(owned(f)?'<span class="seen">Owned</span>':"")+(f.vote?'<span class="age">\u2605 '+f.vote.toFixed(1)+'</span>':""))+'</button>'}).join("")+'</div></div>':""}).join("");
+  if(Date.now()-c.at>216e5)loadDiscover(false)}
+function openDisc(id){
+  var m=null;((loadDiscCache()||{lists:[]}).lists).forEach(function(l){l.items.forEach(function(x){if(x.id===id)m=x})});if(!m)return;
+  var own=owned(m);
+  $("detailBody").innerHTML=(m.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(m.backdrop)+')"></div>':"")+'<div class="row">'+poster(m)+'<div><h2>'+esc(m.title)+'</h2><p class="meta">'+esc(m.year||"")+(m.genres&&m.genres.length?" \u00b7 "+esc(m.genres.join(", ")):"")+(m.vote?" \u00b7 \u2605 "+m.vote.toFixed(1):"")+'</p>'+(m.overview?'<p class="ov">'+esc(m.overview)+'</p>':"")+'</div></div><label style="display:block;margin-top:16px">'+(own?"You own this. Add another format:":"Formats you own")+'</label><div class="fchips" id="dFormats"></div><div class="foot"><button class="btn" data-close>Close</button><button class="btn primary" id="dAdd">'+(own?"Add format":"Add to my collection")+'</button></div>';
+  dscFm=["Blu-ray"];drawFchips("dFormats",dscFm);$("detail").hidden=false;
+  $("dFormats").onclick=function(e){var b=e.target.closest(".fchip");if(!b)return;toggleFm(dscFm,b);drawFchips("dFormats",dscFm)};
+  $("dAdd").onclick=function(){
+    var ex=films.filter(function(o){return isTV(o)===(m.kind==="tv")&&((o.tmdbId&&o.tmdbId===m.tmdbId)||(o.title.toLowerCase()===m.title.toLowerCase()&&String(o.year)===String(m.year)))})[0];
+    if(ex){dscFm.forEach(function(q){addFmt(ex,q)});toast("Updated "+m.title+".")}
+    else{var nf={id:"f"+Date.now(),title:m.title,year:m.year,genre:m.genre,genres:m.genres,format:sortFm(dscFm)[0],formats:sortFm(dscFm),watched:false,kind:m.kind,tmdbId:m.tmdbId,poster:m.poster,backdrop:m.backdrop,overview:m.overview};films.push(nf);toast("Added "+m.title+".");
+      if(nf.kind==="tv"&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){})}
+    save();$("detail").hidden=true;render()}}
+$("rails").addEventListener("click",function(e){var c=e.target.closest("[data-did]");if(c)openDisc(c.getAttribute("data-did"))});
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;addFm=["Blu-ray"];drawFchips("fFormats",addFm);sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
