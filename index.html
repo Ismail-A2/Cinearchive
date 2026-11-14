@@ -12,10 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#14090c;--panel:#1f1014;--curtain:#6b1420;--brass:#c9a45c;--ivory:#f2e8d5;--dim:#9a8878;--line:rgba(201,164,92,.22);color-scheme:dark;
---serif:"Cormorant Garamond",Georgia,serif;--sans:"Outfit",system-ui,-apple-system,sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+--serif:"Playfair Display",Georgia,"Times New Roman",serif;--sans:"Outfit",system-ui,-apple-system,sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
 body{margin:0;background:radial-gradient(120% 60% at 50% -10%,#3a0f18 0,var(--bg) 60%) fixed;color:var(--ivory);font:400 16px/1.5 var(--sans);min-height:100vh}
@@ -160,6 +160,14 @@ details.how a{color:var(--brass)}
 .panel input[type=checkbox]{width:auto;margin-right:8px;vertical-align:middle}
 .panel label.ck{color:var(--ivory);font-size:15px;margin:14px 0 0}
 .tray .actions{flex-wrap:wrap;justify-content:flex-end}
+.topfill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:14;pointer-events:none}
+.dock{position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:15;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;justify-content:space-between;width:calc(100% - 32px);max-width:1168px;margin:6px auto 0;padding:6px 14px;border:1px solid var(--line);border-radius:20px;background:rgba(20,9,12,.74);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 14px 36px -14px #000}
+.dock .tabs{max-width:none;margin:0;padding:0;flex-wrap:wrap}
+.dock .tabs button{padding:6px 12px;font-size:19px}
+.dock .actions{justify-content:flex-end}
+.dock .btn{padding:8px 14px;font-size:14px}
+.dock .tabs button,.dock .btn{white-space:nowrap;flex:none}
+@media(max-width:640px){.dock{padding:4px 10px;border-radius:16px;gap:2px}.dock .tabs,.dock .actions{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;justify-content:flex-start}.dock .tabs::-webkit-scrollbar,.dock .actions::-webkit-scrollbar{display:none}.dock .tabs button{padding:5px 8px;font-size:14px}.dock .tabs{gap:2px}.dock .btn{padding:7px 10px;font-size:12.5px}.dock .actions{gap:6px}}
 .tabs{display:flex;gap:4px;max-width:1200px;margin:0 auto;padding:6px 24px 0}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);padding:8px 14px;font:600 21px var(--serif)}
 .tabs button[aria-pressed=true]{color:var(--ivory);border-color:var(--brass)}
@@ -186,8 +194,12 @@ details.how a{color:var(--brass)}
 </style>
 </head>
 <body>
+<div class="topfill"></div>
 <header>
   <div><h1>Your CineArchive</h1><div class="sub" id="count"></div></div>
+</header>
+<div class="dock" id="dock">
+<div class="tabs" id="tabs"><button data-t="lib" aria-pressed="true">My collection</button><button data-t="tv" aria-pressed="false">TV shows</button><button data-t="str" aria-pressed="false">On streaming</button><button data-t="his" aria-pressed="false">History</button></div>
   <div class="actions">
     <button class="btn" id="addBtn">Add film</button>
     <button class="btn" id="refBtn" hidden>Refresh streaming</button>
@@ -195,8 +207,7 @@ details.how a{color:var(--brass)}
     <button class="btn" id="delBtn">Select</button>
     <button class="btn" id="setBtn">Settings</button>
   </div>
-</header>
-<div class="tabs" id="tabs"><button data-t="lib" aria-pressed="true">My collection</button><button data-t="tv" aria-pressed="false">TV shows</button><button data-t="str" aria-pressed="false">On streaming</button><button data-t="his" aria-pressed="false">History</button></div>
+</div>
 <div class="banner" id="ib" hidden><span id="ibText">Install Your CineArchive on this device for the full-screen app experience.</span><span style="display:flex;gap:8px;flex:none"><button class="btn primary" id="ibBtn">Install</button><button class="btn" id="ibX">Not now</button></span></div>
 <div class="banner" id="kb" hidden><span>Add your free TMDB key to get posters and streaming info.</span><button class="btn primary" id="kbBtn">Set up</button></div>
 <section class="hero2" id="hero2" hidden></section>
