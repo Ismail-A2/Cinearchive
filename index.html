@@ -176,6 +176,8 @@ details.how a{color:var(--brass)}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
+.morebtn{display:block;margin:26px auto 0}
+.morebtn[hidden]{display:none}
 button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
 .railt span{color:var(--brass)}
 .sec{scroll-margin-top:110px}
@@ -224,7 +226,8 @@ button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;curso
   <select id="listSel" aria-label="List"></select><button class="btn" id="listsBtn">Lists</button>
   <span id="chips"></span>
 </div>
-<main><div id="rails"></div><h3 class="sec" id="gridTitle"></h3><button class="chip" id="gClear" hidden style="border:1px solid var(--line);margin:0 0 14px">Show all</button><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>No films match. Try another search or add a film.</div></main>
+<main><div id="rails"></div><h3 class="sec" id="gridTitle"></h3><button class="chip" id="gClear" hidden style="border:1px solid var(--line);margin:0 0 14px">Show all</button><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>No films match. Try another search or add a film.</div><button class="btn morebtn" id="moreBtn" hidden>Load more</button>
+</main>
 
 <div class="tray" id="tray" hidden>
   <div><strong id="trayN">0</strong><span id="trayOf"> of 30 chosen</span><div class="sub" id="traySub">Pick 2 to 30 films, then start the draw.</div></div>
@@ -469,7 +472,7 @@ function renderStream(){
   $("empty").textContent=sitems().length?"No matches.":"Add your TMDB key in Settings, then tap Refresh streaming.";
   $("tray").hidden=!night;$("trayN").textContent=sel.length;$("trayOf").textContent=" of 30 chosen";$("traySub").textContent="Pick 2 to 30 films, then start the draw.";
   $("startDraw").hidden=false;$("selAll").hidden=true;$("delGo").hidden=true;$("autoBtn").hidden=false;$("listAdd").hidden=true;$("startDraw").disabled=sel.length<2;
-  $("nightBtn").classList.toggle("on",night);$("nightBtn").setAttribute("aria-pressed",night);$("nightBtn").textContent=night?"Cancel Movie Night":"Movie Night"}
+  $("nightBtn").classList.toggle("on",night);$("nightBtn").setAttribute("aria-pressed",night);$("nightBtn").textContent=night?"Cancel Movie Night":"Movie Night";updateMore()}
 function openStream(id){
   var m=sall().filter(function(x){return x.id===id})[0];if(!m)return;
   $("detailBody").innerHTML=(m.backdrop?'<div class="hero" style="background-image:url('+IMG+'w780'+esc(m.backdrop)+')"></div>':"")+'<div class="row">'+poster(m)+'<div><h2>'+esc(m.title)+'</h2><p class="meta">'+esc(m.year||"")+(m.genre?" \u00b7 "+esc(m.genre):"")+'</p><p class="meta">Included with: '+esc(m.svc.join(", "))+'</p>'+(m.overview?'<p class="ov">'+esc(m.overview)+'</p>':"")+'</div></div><div class="foot"><button class="btn" data-close>Close</button>'+(owned(m)?"":'<button class="btn primary" id="sAdd">Add to my collection</button>')+'</div>';
@@ -484,7 +487,7 @@ function svcsFor(cc,all){
 async function refreshStream(quiet){
   if(busy)return;
   if(!tkey){if(!quiet)toast("Add your TMDB key in Settings first.");return}
-  busy=true;var cc=country,by={},byT={},miss=[],oldm={};sall().forEach(function(m){oldm[m.id]=m});
+  busy=true;var cc=country,by={},byT={},miss=[],oldm={},idsMap={},pgMap={};sall().forEach(function(m){oldm[m.id]=m});
   try{
     var pv=await tmdb("/watch/providers/movie",{watch_region:cc,language:"en-GB"});
     var pt=await tmdb("/watch/providers/tv",{watch_region:cc,language:"en-GB"});
@@ -493,6 +496,7 @@ async function refreshStream(quiet){
     for(var i=0;i<svcs.length;i++){
       var name=svcs[i].name,ids=svcs[i].ids,pages=svcs[i].pages;
       if(!ids.length){miss.push(name);continue}
+      idsMap[name]=ids;pgMap[name+"|film"]=pages;pgMap[name+"|tv"]=pages;
       for(var kd=0;kd<2;kd++){
         var tvk=kd===1,bag=tvk?byT:by;
         for(var pg=1;pg<=pages;pg++){
@@ -500,7 +504,7 @@ async function refreshStream(quiet){
           var d=await tmdb(tvk?"/discover/tv":"/discover/movie",{watch_region:cc,with_watch_providers:ids.join("|"),with_watch_monetization_types:"flatrate|free|ads",sort_by:"popularity.desc",language:"en-GB",page:pg});
           d.results.forEach(function(m){norm(m);var k=(tvk?"v":"t")+m.id;var o=bag[k]||(bag[k]={id:k,tmdbId:m.id,kind:tvk?"tv":"film",title:m.title,year:(m.release_date||"").slice(0,4),genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(x){return GEN[x]}).filter(Boolean),poster:m.poster_path,backdrop:m.backdrop_path,overview:(m.overview||"").slice(0,240),svc:[],pop:m.popularity});if(o.svc.indexOf(name)<0)o.svc.push(name)})}}}
     var fin=function(b){return Object.keys(b).map(function(k){return b[k]}).filter(function(m){return m.poster}).map(function(m){var o=oldm[m.id];if(o&&o.det){m.cert=o.cert;m.runtime=o.runtime;m.det=1;if(o.seasons)m.seasons=o.seasons}return m}).sort(function(a,b){return b.pop-a.pop}).slice(0,450)};
-    var ns={at:Date.now(),miss:miss,items:fin(by),tv:fin(byT),n:SVC.length,svcs:svcs.filter(function(x){return x.ids.length}).map(function(x){return x.name})};
+    var ns={at:Date.now(),miss:miss,items:fin(by),tv:fin(byT),n:SVC.length,ids:idsMap,pg:pgMap,done:{},svcs:svcs.filter(function(x){return x.ids.length}).map(function(x){return x.name})};
     saveStreamFor(cc,ns);if(cc===country)stream=ns;
     if(!quiet&&svcs.length)toast(miss.length?"Not found in "+cname(cc)+": "+miss.join(", "):"Streaming shelf updated for "+cname(cc)+".")
   }catch(e){if(!quiet)toast(e.message)}
@@ -554,6 +558,7 @@ $("impFile").onchange=function(){
   r.readAsText(f)};
 /* cinematic extras */
 function extras(){
+  if(tab!=="str")$("moreBtn").hidden=true;
   $("kb").hidden=!!tkey;
   $("gClear").hidden=!genreKey||tab==="his";
   if(tab==="his"||tab==="dis"){$("hero2").hidden=true;if(tab==="his")$("rails").innerHTML="";$("gridTitle").textContent=tab==="his"?"Movie Night history":"";return}
@@ -831,6 +836,44 @@ $("stoLists").onclick=function(){
   var del=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^cinearchive:(stream|disc:)/.test(k))del.push(k)}del.forEach(function(k){localStorage.removeItem(k)})}catch(e){}
   stream={at:0,items:[],tv:null,miss:[]};
   toast(del.length?"Cleared saved lists. They will reload when you next open them.":"No saved lists to clear.");checkStorage();render()};
+/* load more streaming titles */
+function moreTargets(){var kd=skind==="tv"?"tv":"film",names=filter==="All"?(stream.svcs||[]):[filter];return names.filter(function(n){return stream.ids&&stream.ids[n]&&!(stream.done&&stream.done[n+"|"+kd])})}
+function updateMore(){
+  var b=$("moreBtn");if(tab!=="str"||!tkey){b.hidden=true;return}
+  var t=moreTargets();b.hidden=false;
+  if(!stream.ids){b.textContent="Load more";b.disabled=false;return}
+  b.disabled=!t.length;
+  b.textContent=t.length?(filter==="All"?"Load more from all services":"Load more from "+filter):"Everything loaded for "+(filter==="All"?"these services":filter)}
+function mkItem(m,tvk){norm(m);return{id:(tvk?"v":"t")+m.id,tmdbId:m.id,kind:tvk?"tv":"film",title:m.title,year:(m.release_date||"").slice(0,4),genre:GEN[(m.genre_ids||[])[0]]||"",genres:(m.genre_ids||[]).map(function(x){return GEN[x]}).filter(Boolean),poster:m.poster_path,backdrop:m.backdrop_path,overview:(m.overview||"").slice(0,240),svc:[],pop:m.popularity}}
+async function loadMoreStream(){
+  if(busy)return;
+  if(!tkey){toast("Add your TMDB key in Settings first.");return}
+  if(!stream.ids){toast("Refreshing the shelf first\u2026");refreshStream(false);return}
+  var targets=moreTargets();if(!targets.length)return;
+  busy=true;
+  var S=stream,cc=country,tvk=skind==="tv",kd=tvk?"tv":"film";
+  S.pg=S.pg||{};S.done=S.done||{};
+  if(tvk&&!S.tv)S.tv=[];
+  var arr=tvk?S.tv:S.items,byId={},per=filter==="All"?1:2,added=0;
+  arr.forEach(function(m){byId[m.id]=m});
+  $("moreBtn").disabled=true;
+  try{
+    for(var i=0;i<targets.length;i++){
+      var name=targets[i],key=name+"|"+kd;
+      for(var k=0;k<per;k++){
+        var next=(S.pg[key]||2)+1;
+        if(tab==="str"&&S===stream)$("moreBtn").textContent="Loading "+name+"\u2026";
+        var d=await tmdb(tvk?"/discover/tv":"/discover/movie",{watch_region:cc,with_watch_providers:S.ids[name].join("|"),with_watch_monetization_types:"flatrate|free|ads",sort_by:"popularity.desc",language:"en-GB",page:next});
+        S.pg[key]=next;
+        if(next>=d.total_pages||!d.results.length)S.done[key]=true;
+        d.results.forEach(function(m){if(!m.poster_path)return;var id=(tvk?"v":"t")+m.id,o=byId[id];if(!o){o=mkItem(m,tvk);byId[id]=o;arr.push(o);added++}if(o.svc.indexOf(name)<0)o.svc.push(name)});
+        if(S.done[key])break}}
+    arr.sort(function(a,b){return b.pop-a.pop});
+    saveStreamFor(cc,S);
+    toast(added?"Added "+added+" more title"+(added===1?"":"s")+".":"Nothing new found.")
+  }catch(e){toast(e.message)}
+  busy=false;render()}
+$("moreBtn").onclick=loadMoreStream;
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;addFm=["Blu-ray"];drawFchips("fFormats",addFm);sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
@@ -974,7 +1017,7 @@ async function runDraw(ids){
 $("startDraw").addEventListener("click",function(){if(sel.length>=2)runDraw(sel.slice())});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
 buildListSel();buildSortSel();render();
-if(tkey&&(Date.now()-stream.at>864e5||!stream.tv||stream.n!==SVC.length))refreshStream(true);
+if(tkey&&(Date.now()-stream.at>864e5||!stream.tv||!stream.ids||stream.n!==SVC.length))refreshStream(true);
 })();
 </script>
 </body>
