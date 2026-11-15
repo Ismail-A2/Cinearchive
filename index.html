@@ -257,6 +257,9 @@ button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;curso
   <label>Install</label>
   <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="instBtn">Install app</button><button class="btn" id="shareBtn">Share app link</button></div>
   <p class="meta" id="instStat" style="font-size:13px"></p>
+  <label>Storage</label>
+  <p class="meta" id="stoInfo" style="font-size:13px;line-height:1.6">Checking…</p>
+  <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="stoBtn">Check again</button><button class="btn" id="stoImg">Clear saved images</button><button class="btn" id="stoLists">Clear saved lists</button></div>
   <label>Backup</label>
   <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="expBtn">Export backup</button><button class="btn" id="impBtn">Import backup</button></div>
   <input type="file" id="impFile" accept=".json,application/json" hidden>
@@ -428,7 +431,7 @@ $("res").onclick=function(e){
   else picked=null;
   renderRes()};
 $("selInfo").onclick=function(e){if(e.target.id==="selClear"){sel2={};picked=null;renderRes()}};
-$("setBtn").onclick=function(){$("kKey").value=tkey;$("mstat").textContent="";$("bstat").textContent="Saves your collection to a file. Your TMDB key is not included.";$("setSheet").hidden=false};
+$("setBtn").onclick=function(){checkStorage();$("kKey").value=tkey;$("mstat").textContent="";$("bstat").textContent="Saves your collection to a file. Your TMDB key is not included.";$("setSheet").hidden=false};
 $("saveKey").onclick=function(){tkey=$("kKey").value.trim();try{localStorage.setItem("cinearchive:tmdb",tkey)}catch(e){}$("setSheet").hidden=true;toast("Key saved.");render()};
 $("match").onclick=async function(){
   if(!tkey){toast("Save your TMDB key first.");return}
@@ -803,6 +806,31 @@ function openDisc(id){
       if(nf.kind==="tv"&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){})}
     save();$("detail").hidden=true;render()}}
 $("rails").addEventListener("click",function(e){var c=e.target.closest("[data-did]");if(c)openDisc(c.getAttribute("data-did"))});
+/* storage readout and clean-up */
+function fmtBytes(n){return n<1024?n+" B":n<1048576?(n/1024).toFixed(0)+" KB":n<1073741824?(n/1048576).toFixed(1)+" MB":(n/1073741824).toFixed(1)+" GB"}
+function lsBytes(re){var t=0;try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k.indexOf("cinearchive:")===0&&re.test(k))t+=(k.length+(localStorage.getItem(k)||"").length)*2}}catch(e){}return t}
+async function imageCaches(){
+  var out=[];if(!window.caches)return out;
+  try{var names=await caches.keys();for(var i=0;i<names.length;i++){if(names[i].indexOf("cinearchive-")!==0)continue;var c=await caches.open(names[i]),reqs=await c.keys();reqs.forEach(function(r){out.push({cache:c,req:r,img:new URL(r.url).hostname==="image.tmdb.org"})})}}catch(e){}
+  return out}
+async function checkStorage(){
+  var el=$("stoInfo"),lines=[];
+  var shelves=lsBytes(/^cinearchive:(stream|disc:)/),mine=lsBytes(/./)-shelves;
+  try{if(navigator.storage&&navigator.storage.estimate){var e=await navigator.storage.estimate();lines.push("<b>Total on this device: "+fmtBytes(e.usage||0)+"</b> (your device\u2019s estimate, which can overstate saved images)")}else lines.push("Your browser can\u2019t report a total.")}catch(x){lines.push("Your browser can\u2019t report a total.")}
+  lines.push("Your collection, lists and history: "+fmtBytes(mine));
+  lines.push("Saved streaming and Discover lists: "+fmtBytes(shelves));
+  var all=await imageCaches(),n=all.filter(function(x){return x.img}).length;
+  lines.push("Saved posters and images: "+n+" file"+(n===1?"":"s"));
+  el.innerHTML=lines.join("<br>")}
+$("stoBtn").onclick=checkStorage;
+$("stoImg").onclick=async function(){
+  var all=await imageCaches(),n=0;
+  for(var i=0;i<all.length;i++){if(all[i].img){try{if(await all[i].cache.delete(all[i].req))n++}catch(e){}}}
+  toast(n?"Cleared "+n+" saved image"+(n===1?"":"s")+".":"No saved images to clear.");checkStorage()};
+$("stoLists").onclick=function(){
+  var del=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/^cinearchive:(stream|disc:)/.test(k))del.push(k)}del.forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+  stream={at:0,items:[],tv:null,miss:[]};
+  toast(del.length?"Cleared saved lists. They will reload when you next open them.":"No saved lists to clear.");checkStorage();render()};
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;addFm=["Blu-ray"];drawFchips("fFormats",addFm);sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
