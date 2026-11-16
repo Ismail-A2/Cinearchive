@@ -136,11 +136,12 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opac
 .rays{position:absolute;width:170vmax;height:170vmax;left:50%;top:44%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;opacity:0;transition:opacity 1.6s;background:repeating-conic-gradient(rgba(201,164,92,.17) 0 6deg,transparent 6deg 18deg);-webkit-mask-image:radial-gradient(circle,#000 0,transparent 52%);mask-image:radial-gradient(circle,#000 0,transparent 52%);animation:spin 45s linear infinite}
 .draw.won .rays{opacity:1}
 @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-.leader{position:absolute;z-index:7;width:min(70vw,52vh,400px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;pointer-events:none;opacity:0;background:rgba(0,0,0,.9);box-shadow:inset 0 0 0 12px rgba(0,0,0,.9),inset 0 0 0 14px rgba(242,232,213,.55)}
+.leader{position:absolute;left:50%;top:50%;translate:-50% -50%;z-index:7;width:min(70vw,52vh,400px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;pointer-events:none;opacity:0;background:rgba(0,0,0,.9);box-shadow:inset 0 0 0 12px rgba(0,0,0,.9),inset 0 0 0 14px rgba(242,232,213,.55)}
 .leader.on{opacity:1}
 .leader .ring{position:absolute;inset:6%;border-radius:50%;border:2px solid rgba(242,232,213,.75);background:conic-gradient(rgba(242,232,213,.26) var(--a,0deg),transparent 0)}
 .leader .xh{position:absolute;inset:0;background:linear-gradient(rgba(242,232,213,.7),rgba(242,232,213,.7)) center/100% 2px no-repeat,linear-gradient(rgba(242,232,213,.7),rgba(242,232,213,.7)) center/2px 100% no-repeat}
-.leader b{position:relative;font:700 min(38vw,220px)/1 var(--serif);color:var(--ivory)}
+.leader b{position:relative;display:block;text-align:center;font:700 min(38vw,220px)/1 var(--serif);color:var(--ivory);font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"lnum","tnum";transform:translateY(-.06em)}
+@supports (text-box:trim-both cap alphabetic){.leader b{text-box:trim-both cap alphabetic;transform:none}}
 @keyframes flick2{50%{opacity:.86;transform:translate(1px,-1px)}}
 .stamp{position:absolute;left:50%;top:50%;z-index:4;transform:translate(-50%,-50%) rotate(-16deg);border:2px solid #e8475a;color:#e8475a;background:rgba(0,0,0,.5);padding:2px 6px;font:700 calc(var(--w)/6.6)/1.05 var(--sans);letter-spacing:.08em;text-align:center;animation:stampIn .28s cubic-bezier(.2,1.8,.4,1)}
 @keyframes stampIn{from{transform:translate(-50%,-50%) rotate(-16deg) scale(2.6);opacity:0}}
