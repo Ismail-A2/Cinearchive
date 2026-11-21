@@ -178,6 +178,7 @@ details.how a{color:var(--brass)}
 .res{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:8px}
 .res img,.res i{width:36px;height:54px;border-radius:3px;object-fit:cover;background:var(--curtain);flex:none}
 .res.on{border-color:var(--brass)}
+.plexlibs{max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px 12px 10px;margin:10px 0}
 .morebtn{display:block;margin:26px auto 0}
 .morebtn[hidden]{display:none}
 button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
@@ -262,6 +263,9 @@ button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;curso
   <label>Install</label>
   <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="instBtn">Install app</button><button class="btn" id="shareBtn">Share app link</button></div>
   <p class="meta" id="instStat" style="font-size:13px"></p>
+  <label>Plex</label>
+  <p class="meta" id="plexStat" style="font-size:13px">Import your Plex library and add Movie Night winners to a playlist.</p>
+  <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="plexBtn">Plex library…</button></div>
   <label>Storage</label>
   <p class="meta" id="stoInfo" style="font-size:13px;line-height:1.6">Checking…</p>
   <div class="foot" style="justify-content:flex-start;margin-top:6px"><button class="btn" id="stoBtn">Check again</button><button class="btn" id="stoImg">Clear saved images</button><button class="btn" id="stoLists">Clear saved lists</button></div>
@@ -278,6 +282,8 @@ button.railt{background:none;border:0;padding:0;color:inherit;font:inherit;curso
   <h2>Install Your CineArchive</h2><div id="instBody"></div>
   <div class="foot"><button class="btn primary" data-close>Done</button></div>
 </div></div>
+
+<div class="sheet" id="plexSheet" hidden><div class="panel" role="dialog" aria-label="Plex"><h2>Plex</h2><div id="plexBody"></div><div class="foot"><button class="btn primary" data-close>Done</button></div></div></div>
 
 <div class="sheet" id="editSheet" hidden><div class="panel" role="dialog" aria-label="Edit film">
   <h2>Edit film</h2>
@@ -340,8 +346,8 @@ function render(){
     if(isTV(f)!==(tab==="tv"))return false;
     if(genreKey&&gl(f).indexOf(genreKey)<0)return false;
     if(q&&(f.title+" "+(f.genre||"")+" "+(f.year||"")).toLowerCase().indexOf(q)<0)return false;
-    if(filter==="Physical")return fmts(f).some(function(x){return x!=="Digital"});
-    if(filter==="Digital")return fmts(f).indexOf("Digital")>=0;
+    if(filter==="Physical")return fmts(f).some(function(x){return !isDig(x)});
+    if(filter==="Digital")return fmts(f).some(isDig);
     if(filter==="Unwatched")return !f.watched;
     return true});
   if(listId){var L=lists.filter(function(x){return x.id===listId})[0];list=L?list.filter(function(f){return L.ids.indexOf(f.id)>=0}):list}
@@ -375,7 +381,7 @@ function buildChips(){
 buildChips();
 $("chips").addEventListener("click",function(e){var k=e.target.getAttribute("data-k");if(k){skind=k;filter="All";genreKey="";buildChips();render();return}var f=e.target.getAttribute("data-f");if(!f)return;filter=f;[].forEach.call($("chips").children,function(c){if(c.hasAttribute("data-f"))c.setAttribute("aria-pressed",c.getAttribute("data-f")===f)});render()});
 $("q").addEventListener("input",render);
-function toast(m){var t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2200)}
+function toast(m,ms){var t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},ms||2200)}
 var gridClick=function(e){
   var c=e.target.closest(".card");if(!c)return;var sid=c.getAttribute("data-sid");if(sid){if(night){var j=sel.indexOf(sid);if(j>=0)sel.splice(j,1);else if(sel.length>=30){toast("Thirty films is the maximum.");return}else sel.push(sid);render()}else openStream(sid);return}var id=c.getAttribute("data-id");
   if(night||del){var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else if(night&&sel.length>=30){toast("Thirty films is the maximum.");return}else sel.push(id);render()}
@@ -442,7 +448,7 @@ $("match").onclick=async function(){
   if(!tkey){toast("Save your TMDB key first.");return}
   var todo=films.filter(function(f){return !f.poster}),n=0;
   for(var i=0;i<todo.length;i++){var f=todo[i];$("mstat").textContent="Matching "+(i+1)+" of "+todo.length+"\u2026";
-    var tv=isTV(f);try{var d=await tmdb(tv?"/search/tv":"/search/movie",tv?{query:f.title,first_air_date_year:f.year,language:"en-GB"}:{query:f.title,year:f.year,language:"en-GB"}),m=d.results[0];
+    var tv=isTV(f);try{var m,d;if(f.tmdbId){m=await tmdb((tv?"/tv/":"/movie/")+f.tmdbId,{language:"en-GB"});m.genre_ids=(m.genres||[]).map(function(g){return g.id})}else{d=await tmdb(tv?"/search/tv":"/search/movie",tv?{query:f.title,first_air_date_year:f.year,language:"en-GB"}:{query:f.title,year:f.year,language:"en-GB"});m=d.results[0]}
       if(m&&m.poster_path){f.tmdbId=m.id;f.poster=m.poster_path;f.backdrop=m.backdrop_path;f.overview=m.overview;f.genres=(m.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean);if(!f.genre&&f.genres.length)f.genre=f.genres[0];n++}
     }catch(e){$("mstat").textContent=e.message;break}}
   save();render();
@@ -551,7 +557,7 @@ $("impFile").onchange=function(){
       arr.forEach(function(x){if(!x||!x.title)return;
         var ex=films.filter(function(o){return o.id===x.id||(x.tmdbId&&o.tmdbId===x.tmdbId)||(o.title.toLowerCase()===String(x.title).toLowerCase()&&String(o.year)===String(x.year))})[0];
         if(ex){(x.formats||(x.format?[x.format]:[])).forEach(function(q){addFmt(ex,q)});return}
-        films.push({id:x.id||"f"+Date.now()+"-"+add,title:String(x.title),year:x.year||"",genre:x.genre||"",format:x.format||"Digital",formats:x.formats,watched:!!x.watched,tmdbId:x.tmdbId,poster:x.poster,backdrop:x.backdrop,overview:x.overview,genres:x.genres,runtime:x.runtime,cert:x.cert,det:x.det,kind:x.kind,seasons:x.seasons});add++});
+        films.push({id:x.id||"f"+Date.now()+"-"+add,title:String(x.title),year:x.year||"",genre:x.genre||"",format:x.format||"Digital",formats:x.formats,watched:!!x.watched,tmdbId:x.tmdbId,poster:x.poster,backdrop:x.backdrop,overview:x.overview,genres:x.genres,runtime:x.runtime,cert:x.cert,det:x.det,kind:x.kind,seasons:x.seasons,plexKey:x.plexKey});add++});
       (d.lists||[]).forEach(function(l){if(!l||!l.name)return;var m=lists.filter(function(x){return x.name===l.name})[0];if(!m){m={id:"l"+Date.now()+Math.random().toString(36).slice(2,6),name:l.name,ids:[]};lists.push(m)}(l.ids||[]).forEach(function(i){if(m.ids.indexOf(i)<0)m.ids.push(i)})});
       (d.history||[]).forEach(function(h){if(h&&h.id&&!hist.some(function(x){return x.id===h.id}))hist.push(h)});saveLists();saveHist();buildListSel();
       save();render();$("bstat").textContent="Imported "+add+" new film"+(add===1?"":"s")+". "+(arr.length-add)+" already in your collection or skipped."
@@ -759,7 +765,7 @@ $("shareBtn").onclick=function(){
   else toast(u)};
 showInstallBanner();
 /* multiple formats per entry */
-var FORMATS=["4K UHD","Blu-ray","DVD","Digital"],addFm=["Blu-ray"],editFm=[];
+var FORMATS=["4K UHD","Blu-ray","DVD","Digital","Plex"],addFm=["Blu-ray"],editFm=[];
 function fmts(f){return f.formats&&f.formats.length?f.formats:(f.format?[f.format]:[])}
 function sortFm(a){return FORMATS.filter(function(x){return a.indexOf(x)>=0}).concat(a.filter(function(x){return FORMATS.indexOf(x)<0}))}
 function setFmts(f,a){f.formats=sortFm(a);f.format=f.formats[0]||""}
@@ -876,6 +882,139 @@ async function loadMoreStream(){
   }catch(e){toast(e.message)}
   busy=false;render()}
 $("moreBtn").onclick=loadMoreStream;
+/* plex: import library, add winners to a playlist */
+var plex=null,plexCancel=false;
+try{plex=JSON.parse(localStorage.getItem("cinearchive:plex"))}catch(e){}
+function isDig(x){return x==="Digital"||x==="Plex"}
+function savePlex(){try{if(plex)localStorage.setItem("cinearchive:plex",JSON.stringify(plex));else localStorage.removeItem("cinearchive:plex")}catch(e){}}
+function plexCid(){var c=null;try{c=localStorage.getItem("cinearchive:cid")}catch(e){}if(!c){c=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():"ca-"+Date.now()+"-"+Math.random().toString(16).slice(2);try{localStorage.setItem("cinearchive:cid",c)}catch(e){}}return c}
+function pq(o){return Object.keys(o).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(o[k])}).join("&")}
+var PLEXG={"Science Fiction":"Sci-fi","Sci-Fi & Fantasy":"Sci-fi","Action & Adventure":"Action","War & Politics":"War","Kids":"Family","Children":"Family","Musical":"Music","Suspense":"Thriller","Biography":"History"};
+function plexErr(e){return(e&&e.message&&/^Plex said/.test(e.message))?e.message:"Could not reach your Plex server from this page. It needs a secure (https) connection and must allow this site to read from it."}
+function setPlexMsg(h){var m=$("plexMsg");if(m)m.innerHTML=h}
+function updatePlexStat(){$("plexStat").textContent=plex?"Connected to "+plex.name+". Import your library or add winners to a playlist.":"Import your Plex library and add Movie Night winners to a playlist."}
+async function plexFetch(path,params,method){
+  if(!plex)throw new Error("Not connected to Plex.");
+  var q=Object.assign({"X-Plex-Token":plex.at,"X-Plex-Client-Identifier":plexCid()},params||{});
+  var r=await fetch(plex.uri+path+(path.indexOf("?")>=0?"&":"?")+pq(q),{method:method||"GET",headers:{Accept:"application/json"}});
+  if(!r.ok)throw new Error("Plex said "+r.status+(r.status===401?" (your sign-in may have expired)":""));
+  var t=await r.text();try{return JSON.parse(t)}catch(e){return{}}}
+async function plexSignIn(){
+  plexCancel=false;var id=plexCid(),win=null;setPlexMsg("Opening Plex sign-in\u2026");
+  try{win=window.open("about:blank","_blank")}catch(e){}
+  try{
+    var r=await fetch("https://plex.tv/api/v2/pins?"+pq({strong:"true","X-Plex-Product":"Your CineArchive","X-Plex-Client-Identifier":id}),{method:"POST",headers:{Accept:"application/json"}});
+    var pin=await r.json();
+    var url="https://app.plex.tv/auth#?"+pq({clientID:id,code:pin.code,"context[device][product]":"Your CineArchive"});
+    if(win)win.location.href=url;else setPlexMsg('Your browser blocked the sign-in window. <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--brass)">Tap here to sign in with Plex</a>, then come back.');
+    var tok=null;
+    for(var i=0;i<100&&!plexCancel;i++){
+      await new Promise(function(res){setTimeout(res,2000)});
+      var s2=await(await fetch("https://plex.tv/api/v2/pins/"+pin.id+"?"+pq({code:pin.code,"X-Plex-Client-Identifier":id}),{headers:{Accept:"application/json"}})).json();
+      if(s2.authToken){tok=s2.authToken;break}}
+    try{if(win)win.close()}catch(e){}
+    if(!tok){if(!plexCancel)setPlexMsg("Sign-in timed out. Try again, or paste a token instead.");return}
+    await plexConnect(tok)
+  }catch(e){setPlexMsg("Could not start the Plex sign-in from this page. You can paste a Plex token instead.")}}
+async function plexConnect(token){
+  setPlexMsg("Looking for your Plex server\u2026");
+  try{
+    var r=await fetch("https://plex.tv/api/v2/resources?"+pq({includeHttps:1,includeRelay:1,"X-Plex-Token":token,"X-Plex-Client-Identifier":plexCid()}),{headers:{Accept:"application/json"}});
+    if(!r.ok)throw new Error("Plex said "+r.status);
+    var servers=(await r.json()).filter(function(x){return(x.provides||"").indexOf("server")>=0});
+    servers.sort(function(x,y){return(y.owned?1:0)-(x.owned?1:0)});
+    if(!servers.length){setPlexMsg("No Plex server was found on that account.");return}
+    var sv=servers[0],at=sv.accessToken||token,found=null;
+    var score=function(c){return(c.protocol==="https"?4:0)+(c.relay?0:2)+(c.local?1:0)};
+    var conns=(sv.connections||[]).slice().sort(function(x,y){return score(y)-score(x)});
+    for(var i=0;i<conns.length&&!found;i++){
+      try{var ctl=new AbortController(),tm=setTimeout(function(){ctl.abort()},6000);
+        var rr=await fetch(conns[i].uri+"/identity?"+pq({"X-Plex-Token":at}),{headers:{Accept:"application/json"},signal:ctl.signal});clearTimeout(tm);
+        if(rr.ok)found=conns[i].uri}catch(e){}}
+    if(!found){setPlexMsg("Found your server ("+esc(sv.name)+") but could not reach it from this page. Plex needs to offer a secure (https) connection that this site is allowed to read.");return}
+    plex={token:token,at:at,name:sv.name,machineId:sv.clientIdentifier,uri:found,playlist:"Movie Night"};savePlex();drawPlex();updatePlexStat()
+  }catch(e){setPlexMsg(esc(plexErr(e)))}}
+var plexPending=null;
+function rmFmt(f,q){setFmts(f,fmts(f).filter(function(x){return x!==q}))}
+function plexMatch(it,tv){
+  var tm=null;(it.Guid||[]).forEach(function(g){var m=/^tmdb:\/\/(\d+)/.exec(g.id||"");if(m)tm=+m[1]});
+  var yr=it.year?String(it.year):"";
+  var ex=films.filter(function(o){return isTV(o)===tv&&((tm&&o.tmdbId&&o.tmdbId===tm)||(o.title.toLowerCase()===String(it.title).toLowerCase()&&String(o.year)===yr))})[0];
+  return{tm:tm,yr:yr,ex:ex}}
+async function plexImport(libs){
+  var all=[];plexPending=null;
+  try{
+    for(var li=0;li<libs.length;li++){
+      var lib=libs[li],tv=lib.type==="show",start=0;
+      while(true){
+        setPlexMsg("Reading "+esc(lib.title)+"\u2026 "+start+" so far");
+        var d=await plexFetch("/library/sections/"+lib.key+"/all",{includeGuids:1,"X-Plex-Container-Start":start,"X-Plex-Container-Size":100}),mc=d.MediaContainer||{},items=mc.Metadata||[];
+        items.forEach(function(it){all.push({it:it,tv:tv})});
+        start+=items.length;
+        if(!items.length||start>=(mc.totalSize||mc.size||0))break}}
+    var seenIds={},cand=0;
+    all.forEach(function(e){var m=plexMatch(e.it,e.tv);if(m.ex&&!seenIds[m.ex.id]&&fmts(m.ex).indexOf("Digital")>=0){seenIds[m.ex.id]=1;cand++}});
+    if(cand&&!(plex&&plex.keepBoth)){
+      plexPending={all:all};
+      setPlexMsg("<b>"+cand+" film"+(cand===1?"":"s")+" you already had "+(cand===1?"is":"are")+" labelled Digital and "+(cand===1?"is":"are")+" on your Plex server.</b> Replace the Digital label with Plex on "+(cand===1?"it":"them")+'?<div class="foot" style="justify-content:flex-start;margin-top:8px"><button class="btn primary" id="plexRep">Replace Digital with Plex</button><button class="btn" id="plexKeep">Keep both labels</button><button class="btn" id="plexNo">Cancel</button></div>');
+      return}
+    plexApply(all,false)
+  }catch(e){setPlexMsg(esc(plexErr(e)))}}
+function plexApply(all,replace){
+  var added=0,merged=0,watched=0,swapped=0,n=0;
+  all.forEach(function(e){
+    var it=e.it,tv=e.tv,m=plexMatch(it,tv),ex=m.ex,tm=m.tm,yr=m.yr;
+    var genres=(it.Genre||[]).map(function(g){return PLEXG[g.tag]||g.tag}),seen=(it.viewCount||0)>0;
+    if(ex){
+      if(replace&&fmts(ex).indexOf("Digital")>=0){rmFmt(ex,"Digital");swapped++}
+      addFmt(ex,"Plex");ex.plexKey=it.ratingKey;if(!ex.tmdbId&&tm)ex.tmdbId=tm;if(seen&&!ex.watched){ex.watched=true;watched++}merged++}
+    else{
+      var nf={id:"f"+Date.now()+"-"+(n++),title:String(it.title),year:yr,genre:genres[0]||"",genres:genres,format:"Plex",formats:["Plex"],watched:seen,kind:tv?"tv":"film",overview:it.summary||"",plexKey:it.ratingKey};
+      if(tm)nf.tmdbId=tm;if(seen)watched++;
+      var cr=(it.contentRating||"").replace(/^gb\//i,"");if(RANK[cr]!==undefined)nf.cert=cr;
+      if(!tv&&it.duration)nf.runtime=Math.round(it.duration/60000);
+      if(tv&&it.childCount)nf.seasons=it.childCount;
+      films.push(nf);added++}});
+  save();render();
+  setPlexMsg("Done. Added "+added+" new, updated "+merged+" you already had"+(swapped?" (swapped Digital for Plex on "+swapped+")":"")+(watched?", and marked "+watched+" as watched":"")+"."+(tkey?" Posters are loading in the background.":" Add your TMDB key in Settings to get posters."));
+  if(tkey&&(added||merged))$("match").onclick()}
+async function plexAddWinner(w,btn){
+  if(!plex)return;if(btn)btn.disabled=true;
+  try{
+    var name=((plex.playlist||"Movie Night")+"").trim()||"Movie Night",uri="server://"+plex.machineId+"/com.plexapp.plugins.library/library/metadata/"+w.plexKey;
+    var d=await plexFetch("/playlists",{playlistType:"video"});
+    var pl=((d.MediaContainer||{}).Metadata||[]).filter(function(p){return p.title===name})[0];
+    if(!pl){await plexFetch("/playlists",{type:"video",title:name,smart:0,uri:uri},"POST");toast("Created \u201c"+name+"\u201d with "+w.title+".",4000)}
+    else{
+      var it=await plexFetch("/playlists/"+pl.ratingKey+"/items"),have=((it.MediaContainer||{}).Metadata||[]).some(function(m){return String(m.ratingKey)===String(w.plexKey)});
+      if(have)toast(w.title+" is already in \u201c"+name+"\u201d.",4000);
+      else{await plexFetch("/playlists/"+pl.ratingKey+"/items",{uri:uri},"PUT");toast("Added "+w.title+" to \u201c"+name+"\u201d.",4000)}}
+    if(btn)btn.textContent="In Plex playlist"
+  }catch(e){toast(plexErr(e),7000);if(btn)btn.disabled=false}}
+function drawPlex(){
+  var b=$("plexBody");
+  if(!plex){
+    b.innerHTML='<p class="meta" style="font-size:14px">Connect your Plex account to import your library and add Movie Night winners to a playlist. Your sign-in stays on this device and goes only to Plex and your own server.</p><div class="foot" style="justify-content:flex-start"><button class="btn primary" id="plexIn">Sign in with Plex</button></div><label for="plexTok">Or paste a Plex token</label><input id="plexTok" autocomplete="off" spellcheck="false"><div class="foot" style="justify-content:flex-start"><button class="btn" id="plexTokGo">Use token</button></div><p class="meta" id="plexMsg" style="font-size:13px"></p>';return}
+  b.innerHTML='<p class="meta" style="font-size:14px">Connected to <b>'+esc(plex.name)+'</b>.</p><div class="plexlibs" id="plexLibs"><span class="meta">Loading libraries\u2026</span></div><label for="plexPl">Playlist for Movie Night winners</label><input id="plexPl" value="'+esc(plex.playlist||"Movie Night")+'"><div class="foot" style="justify-content:flex-start"><button class="btn primary" id="plexImp">Import selected</button><button class="btn" id="plexOut">Disconnect</button></div><p class="meta" id="plexMsg" style="font-size:13px"></p>';
+  plexFetch("/library/sections").then(function(d){
+    var dirs=((d.MediaContainer||{}).Directory||[]).filter(function(x){return x.type==="movie"||x.type==="show"});
+    $("plexLibs").innerHTML=dirs.length?dirs.map(function(x){return'<label class="ck"><input type="checkbox" data-key="'+esc(x.key)+'" data-type="'+x.type+'" data-title="'+esc(x.title)+'" checked>'+esc(x.title)+' <span class="meta">'+(x.type==="show"?"TV":"films")+'</span></label>'}).join(""):'<span class="meta">No film or TV libraries found.</span>'
+  }).catch(function(e){$("plexLibs").innerHTML='<span class="meta">'+esc(plexErr(e))+'</span>'})}
+$("plexBody").addEventListener("click",function(e){
+  var id=e.target.id;
+  if(id==="plexIn")plexSignIn();
+  else if(id==="plexTokGo"){var t=$("plexTok").value.trim();if(t)plexConnect(t)}
+  else if(id==="plexOut"){plex=null;savePlex();drawPlex();updatePlexStat()}
+  else if(id==="plexRep"&&plexPending){var pa=plexPending.all;plexPending=null;plexApply(pa,true)}
+  else if(id==="plexKeep"&&plexPending){var pb=plexPending.all;plexPending=null;if(plex){plex.keepBoth=true;savePlex()}plexApply(pb,false)}
+  else if(id==="plexNo"){plexPending=null;setPlexMsg("Import cancelled. Nothing was changed.")}
+  else if(id==="plexImp"){
+    var libs=[].map.call($("plexLibs").querySelectorAll("input:checked"),function(c){return{key:c.getAttribute("data-key"),type:c.getAttribute("data-type"),title:c.getAttribute("data-title")}});
+    if(!libs.length){setPlexMsg("Tick at least one library.");return}
+    plexImport(libs)}});
+$("plexBody").addEventListener("input",function(e){if(e.target.id==="plexPl"&&plex){plex.playlist=e.target.value;savePlex()}});
+$("plexBtn").onclick=function(){drawPlex();$("plexSheet").hidden=false};
+updatePlexStat();
 /* add */
 $("addBtn").addEventListener("click",function(){["fTitle","fYear","fGenre"].forEach(function(i){$(i).value=""});picked=null;addFm=["Blu-ray"];drawFchips("fFormats",addFm);sel2={};rsAll=[];sMore=false;$("res").innerHTML="";$("selInfo").hidden=true;$("saveFilm").textContent="Save film";$("addSheet").querySelector("h2").textContent=tab==="tv"?"Add a TV show":"Add a film";$("addSheet").hidden=false;$("fTitle").focus()});
 $("saveFilm").addEventListener("click",function(){
@@ -897,7 +1036,7 @@ $("saveFilm").addEventListener("click",function(){
   if(ex1){var b1=fmts(ex1).length;addFm.forEach(function(q){addFmt(ex1,q)});save();$("addSheet").hidden=true;render();toast(fmts(ex1).length>b1?"Added "+sortFm(addFm).join(", ")+" to "+ex1.title+".":ex1.title+" already has "+(addFm.length>1?"those formats":addFm[0])+".");return}
   var nf={id:"f"+Date.now(),title:t,year:$("fYear").value.trim(),genre:$("fGenre").value.trim(),format:sortFm(addFm)[0],formats:sortFm(addFm),watched:false,kind:isT?"tv":"film"};if(picked&&picked.title===t){nf.tmdbId=picked.id;nf.poster=picked.poster_path;nf.backdrop=picked.backdrop_path;nf.overview=picked.overview;nf.genres=(picked.genre_ids||[]).map(function(i){return GEN[i]}).filter(Boolean)}films.push(nf);if(nf.kind==="tv"&&nf.tmdbId&&tkey)tmdb("/tv/"+nf.tmdbId).then(function(d){nf.seasons=d.number_of_seasons;save();render()}).catch(function(){});
   save();$("addSheet").hidden=true;render()});
-document.addEventListener("click",function(e){if(e.target.hasAttribute&&e.target.hasAttribute("data-close")||e.target.classList.contains("sheet")){$("addSheet").hidden=true;$("detail").hidden=true;$("setSheet").hidden=true;$("editSheet").hidden=true;$("autoSheet").hidden=true;$("listSheet").hidden=true;$("instSheet").hidden=true}});
+document.addEventListener("click",function(e){if(e.target.hasAttribute&&e.target.hasAttribute("data-close")||e.target.classList.contains("sheet")){$("addSheet").hidden=true;$("detail").hidden=true;$("setSheet").hidden=true;$("editSheet").hidden=true;$("autoSheet").hidden=true;$("listSheet").hidden=true;$("instSheet").hidden=true;$("plexSheet").hidden=true;plexCancel=true}});
 /* detail */
 function openDetail(id){
   var f=films.filter(function(x){return x.id===id})[0];if(!f)return;
@@ -1013,8 +1152,9 @@ async function runDraw(ids){
   dr.classList.add("won");dr.classList.remove("dark");
   [523,659,784,1047].forEach(function(f,i){setTimeout(function(){tone(f,1.1,"triangle",.07)},i*150)});
   for(var sp=0;sp<34;sp++){var pe=document.createElement("div");pe.className="sp";var an=Math.random()*6.283,rr=120+Math.random()*280;pe.style.setProperty("--x",Math.cos(an)*rr+"px");pe.style.setProperty("--y",Math.sin(an)*rr+"px");dr.appendChild(pe);(function(q2){setTimeout(function(){q2.remove()},1800)})(pe)}
-  $("dact").innerHTML='<button class="btn" id="again">Draw again</button><button class="btn" id="drop">Remove winner and redraw</button><button class="btn primary" id="seenIt">Mark as watched</button><button class="btn" id="closeDraw">Close</button>';
+  $("dact").innerHTML='<button class="btn" id="again">Draw again</button><button class="btn" id="drop">Remove winner and redraw</button><button class="btn primary" id="seenIt">Mark as watched</button><button class="btn" id="plexAdd" hidden>Add to Plex playlist</button><button class="btn" id="closeDraw">Close</button>';
   if(w.svc)$("seenIt").textContent="Add to my collection";
+  if(plex&&w.plexKey){$("plexAdd").hidden=false;$("plexAdd").onclick=function(){plexAddWinner(w,this)}}
   $("again").onclick=function(){dropWin();runDraw(ids)};
   $("drop").onclick=function(){var rest=ids.filter(function(x){return x!==w.id});if(rest.length<2){toast("Not enough films left to redraw.");return}ids=rest;dropWin();runDraw(rest)};
   $("seenIt").onclick=function(){
